@@ -1,4 +1,4 @@
-# InfraTrack v0.1 (MVP)
+# InfraTrack (MVP)
 
 InfraTrack is a local-first CLI that records explicitly executed commands and exports a deterministic markdown runbook.
 
