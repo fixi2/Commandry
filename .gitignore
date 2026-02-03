@@ -1,0 +1,7 @@
+# Cursor project rules (keep local, do not commit)
+.cursor/
+runbooks/
+.infratrack/
+*.env
+*.key
+*.pem
