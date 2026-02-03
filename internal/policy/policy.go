@@ -53,7 +53,7 @@ func NewDefault() *Policy {
 				repl: `${1}` + RedactedValue,
 			},
 			{
-				re:   regexp.MustCompile(`(?i)(\b(?:token|secret|password|passwd|authorization|bearer|api[_-]?key|apikey|private[_-]?key)\b\s*[:=]\s*)([^\s]+)`),
+				re:   regexp.MustCompile(`(?i)(\b(?:token|secret|password|passwd|api[_-]?key|apikey|private[_-]?key)\b\s*[:=]\s*)([^\s]+)`),
 				repl: `${1}` + RedactedValue,
 			},
 			{
