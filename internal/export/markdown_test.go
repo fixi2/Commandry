@@ -3,6 +3,7 @@ package export
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,13 +44,17 @@ func TestRenderMarkdownGolden(t *testing.T) {
 		t.Fatalf("read golden file: %v", err)
 	}
 
-	if got != string(wantBytes) {
+	if normalizeNewlines(got) != normalizeNewlines(string(wantBytes)) {
 		t.Fatalf("markdown mismatch\n--- got ---\n%s\n--- want ---\n%s", got, string(wantBytes))
 	}
 }
 
 func intPtr(v int) *int {
 	return &v
+}
+
+func normalizeNewlines(s string) string {
+	return strings.ReplaceAll(s, "\r\n", "\n")
 }
 
 func TestRunbookFilename(t *testing.T) {
