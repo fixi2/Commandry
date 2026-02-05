@@ -16,6 +16,12 @@ go build ./cmd/infratrack
 
 The binary is created as `infratrack` (or `infratrack.exe` on Windows).
 
+Build with explicit version/commit metadata:
+
+```bash
+go build -ldflags "-X github.com/fixi2/InfraTrack/internal/buildinfo.Version=v0.2.0 -X github.com/fixi2/InfraTrack/internal/buildinfo.Commit=<git-sha>" ./cmd/infratrack
+```
+
 ## Quickstart Demo
 
 ```bash
@@ -38,6 +44,7 @@ Expected output artifact:
 - `infratrack status` shows current recording state.
 - `infratrack stop` (alias: `stp`) finalizes the active session.
 - `infratrack export --last --md` (alias: `x`) exports the latest completed session to markdown.
+- `infratrack version` (alias: `v`) prints build version/commit metadata.
 - Short flags: `export --last/-l`, `export --format/-f md`; `--md` remains supported for compatibility.
 
 ## Windows Shell Builtins
