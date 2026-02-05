@@ -217,13 +217,20 @@ func newRunCmd(s store.SessionStore, p *policy.Policy) *cobra.Command {
 
 			fmt.Fprintf(
 				cmd.OutOrStdout(),
-				"Recorded step (%d ms, exit %d)\n",
+				"Recorded step (%d ms, exit %s)\n",
 				step.DurationMS,
-				step.ExitCode,
+				formatExitCode(step.ExitCode),
 			)
 			return nil
 		},
 	}
+}
+
+func formatExitCode(code *int) string {
+	if code == nil {
+		return "n/a"
+	}
+	return fmt.Sprintf("%d", *code)
 }
 
 func isWindowsShellBuiltin(cmd string) bool {
