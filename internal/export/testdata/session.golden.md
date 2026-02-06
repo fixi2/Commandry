@@ -5,8 +5,9 @@ This runbook was generated from an explicit InfraTrack session.
 Recorded 2 step(s).
 
 ## Preconditions
-- TODO: Verify required tools and access are available.
-- TODO: Confirm no secrets are needed in commands.
+- Suggested: `kubectl` is installed and available in PATH.
+- Suggested: Kubernetes context and access are configured (`KUBECONFIG`/current-context).
+- Suggested: Confirm no secrets are needed in commands.
 
 ## Steps
 1. Execute command
