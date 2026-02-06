@@ -42,6 +42,23 @@ func TestCommandAliases(t *testing.T) {
 	}
 }
 
+func TestSessionsCommandExists(t *testing.T) {
+	t.Parallel()
+
+	root, err := NewRootCommand()
+	if err != nil {
+		t.Fatalf("NewRootCommand failed: %v", err)
+	}
+
+	cmd, _, err := root.Find([]string{"sessions", "list"})
+	if err != nil {
+		t.Fatalf("root.Find(sessions list) failed: %v", err)
+	}
+	if cmd == nil || cmd.Name() != "list" {
+		t.Fatalf("sessions list command not found")
+	}
+}
+
 func TestShortFlags(t *testing.T) {
 	t.Parallel()
 
@@ -67,5 +84,8 @@ func TestShortFlags(t *testing.T) {
 	}
 	if exportCmd.Flags().ShorthandLookup("f") == nil {
 		t.Fatalf("short flag -f is not configured for export")
+	}
+	if exportCmd.Flags().Lookup("session") == nil {
+		t.Fatalf("flag --session is not configured for export")
 	}
 }

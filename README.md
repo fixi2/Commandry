@@ -38,6 +38,8 @@ Expected output artifact:
 - `infratrack status` shows current recording state.
 - `infratrack stop` (alias: `stp`) finalizes the active session.
 - `infratrack export --last --md` (alias: `x`) exports the latest completed session to markdown.
+- `infratrack export --session <id> -f md` exports a specific completed session by id.
+- `infratrack sessions list` lists recent completed sessions (use `-n` to control count).
 - `infratrack version` (alias: `v`) prints build version metadata.
 - Short flags: `export --last/-l`, `export --format/-f md`; `--md` remains supported for compatibility.
 

@@ -17,6 +17,7 @@ var (
 	ErrActiveSessionExists = errors.New("active session already exists")
 	ErrNoActiveSession     = errors.New("no active session")
 	ErrNoSessions          = errors.New("no completed sessions")
+	ErrSessionNotFound     = errors.New("session not found")
 )
 
 type SessionStore interface {
@@ -28,6 +29,8 @@ type SessionStore interface {
 	AddStep(ctx context.Context, step Step) error
 	StopSession(ctx context.Context, endedAt time.Time) (*Session, error)
 	LastSession(ctx context.Context) (*Session, error)
+	ListSessions(ctx context.Context, limit int) ([]Session, error)
+	SessionByID(ctx context.Context, id string) (*Session, error)
 }
 
 type JSONStore struct {
@@ -206,6 +209,47 @@ func (s *JSONStore) LastSession(_ context.Context) (*Session, error) {
 	return &session, nil
 }
 
+func (s *JSONStore) ListSessions(_ context.Context, limit int) ([]Session, error) {
+	if err := s.requireInitialized(); err != nil {
+		return nil, err
+	}
+
+	sessions, err := s.readAllSessions()
+	if err != nil {
+		return nil, err
+	}
+	if len(sessions) == 0 {
+		return nil, ErrNoSessions
+	}
+	if limit <= 0 || limit > len(sessions) {
+		limit = len(sessions)
+	}
+
+	result := make([]Session, 0, limit)
+	for i := len(sessions) - 1; i >= 0 && len(result) < limit; i-- {
+		result = append(result, sessions[i])
+	}
+	return result, nil
+}
+
+func (s *JSONStore) SessionByID(_ context.Context, id string) (*Session, error) {
+	if err := s.requireInitialized(); err != nil {
+		return nil, err
+	}
+
+	sessions, err := s.readAllSessions()
+	if err != nil {
+		return nil, err
+	}
+	for i := len(sessions) - 1; i >= 0; i-- {
+		if sessions[i].ID == id {
+			session := sessions[i]
+			return &session, nil
+		}
+	}
+	return nil, ErrSessionNotFound
+}
+
 func (s *JSONStore) ensureConfigFile() error {
 	_, err := os.Stat(s.configPath)
 	if err == nil {
@@ -296,6 +340,35 @@ func (s *JSONStore) appendCompleted(session *Session) error {
 	}
 
 	return nil
+}
+
+func (s *JSONStore) readAllSessions() ([]Session, error) {
+	file, err := os.Open(s.sessionsPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, ErrNoSessions
+		}
+		return nil, fmt.Errorf("open sessions file: %w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	sessions := make([]Session, 0, 32)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var session Session
+		if err := json.Unmarshal([]byte(line), &session); err != nil {
+			return nil, fmt.Errorf("decode session: %w", err)
+		}
+		sessions = append(sessions, session)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scan sessions file: %w", err)
+	}
+	return sessions, nil
 }
 
 func (s *JSONStore) writeJSONAtomic(path string, value any) error {
