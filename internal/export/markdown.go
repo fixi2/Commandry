@@ -12,6 +12,11 @@ import (
 )
 
 var nonSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
+var (
+	kubectlWord   = regexp.MustCompile(`\bkubectl\b`)
+	dockerWord    = regexp.MustCompile(`\bdocker\b`)
+	terraformWord = regexp.MustCompile(`\bterraform\b`)
+)
 
 func WriteMarkdown(session *store.Session, workingDir string) (string, error) {
 	runbooksDir := filepath.Join(workingDir, "runbooks")
@@ -48,8 +53,12 @@ func RenderMarkdown(session *store.Session) string {
 	b.WriteString(fmt.Sprintf("Recorded %d step(s).\n\n", len(session.Steps)))
 
 	b.WriteString("## Preconditions\n")
-	b.WriteString("- TODO: Verify required tools and access are available.\n")
-	b.WriteString("- TODO: Confirm no secrets are needed in commands.\n\n")
+	for _, precondition := range detectPreconditions(session.Steps) {
+		b.WriteString("- ")
+		b.WriteString(precondition)
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
 
 	b.WriteString("## Steps\n")
 	if len(session.Steps) == 0 {
@@ -110,6 +119,55 @@ func normalizeResult(step store.Step) (string, string) {
 	}
 
 	return status, reason
+}
+
+func detectPreconditions(steps []store.Step) []string {
+	if len(steps) == 0 {
+		return []string{
+			"TODO: Verify required tools and access are available.",
+			"TODO: Confirm no secrets are needed in commands.",
+		}
+	}
+
+	hasKubectl := false
+	hasDocker := false
+	hasTerraform := false
+	for _, step := range steps {
+		cmd := strings.ToLower(step.Command)
+		hasKubectl = hasKubectl || kubectlWord.MatchString(cmd)
+		hasDocker = hasDocker || dockerWord.MatchString(cmd)
+		hasTerraform = hasTerraform || terraformWord.MatchString(cmd)
+	}
+
+	preconditions := make([]string, 0, 10)
+	if hasKubectl {
+		preconditions = append(preconditions,
+			"Suggested: `kubectl` is installed and available in PATH.",
+			"Suggested: Kubernetes context and access are configured (`KUBECONFIG`/current-context).",
+		)
+	}
+	if hasDocker {
+		preconditions = append(preconditions,
+			"Suggested: Docker CLI is installed and Docker daemon is running.",
+			"Suggested: Current user has permission to access Docker daemon.",
+		)
+	}
+	if hasTerraform {
+		preconditions = append(preconditions,
+			"Suggested: `terraform` CLI is installed and initialized for this workspace.",
+			"Suggested: Backend credentials and target workspace are configured.",
+		)
+	}
+
+	if len(preconditions) == 0 {
+		return []string{
+			"TODO: Verify required tools and access are available.",
+			"TODO: Confirm no secrets are needed in commands.",
+		}
+	}
+
+	preconditions = append(preconditions, "Suggested: Confirm no secrets are needed in commands.")
+	return preconditions
 }
 
 func slugify(title string) string {
