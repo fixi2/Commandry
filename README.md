@@ -16,28 +16,6 @@ go build ./cmd/infratrack
 
 The binary is created as `infratrack` (or `infratrack.exe` on Windows).
 
-Local build with custom version metadata (optional):
-
-```bash
-go build -ldflags "-X github.com/fixi2/InfraTrack/internal/buildinfo.Version=v0.2.0" ./cmd/infratrack
-```
-
-## Automated Release Versioning
-
-Release version is set automatically from the Git tag (`v*`) in GitHub Actions.
-
-Flow:
-- create and push a tag, for example `v0.2.0`
-- workflow `.github/workflows/release.yml` runs tests, builds binaries, and injects version via `-ldflags`
-- release artifacts are published with that version
-
-Commands:
-
-```bash
-git tag -a v0.2.0 -m "InfraTrack v0.2.0"
-git push origin v0.2.0
-```
-
 ## Quickstart Demo
 
 ```bash
