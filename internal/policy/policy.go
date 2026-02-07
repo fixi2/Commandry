@@ -3,6 +3,7 @@ package policy
 import (
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -25,6 +26,8 @@ type Policy struct {
 	denylist []*regexp.Regexp
 	redact   []redactor
 }
+
+var credentialInImageRef = regexp.MustCompile(`^[^/\s:@]+:[^/\s@]+@`)
 
 func NewDefault() *Policy {
 	return &Policy{
@@ -80,15 +83,88 @@ func (p *Policy) Apply(rawCommand string, args []string) Result {
 		}
 	}
 
-	sanitized := rawCommand
+	sanitized, preserved := preserveKubectlSetImageAssignments(rawCommand, args)
 	for _, rule := range p.redact {
 		sanitized = rule.re.ReplaceAllString(sanitized, rule.repl)
+	}
+	for placeholder, original := range preserved {
+		sanitized = strings.ReplaceAll(sanitized, placeholder, original)
 	}
 
 	return Result{
 		Command: sanitized,
 		Denied:  false,
 	}
+}
+
+func preserveKubectlSetImageAssignments(rawCommand string, args []string) (string, map[string]string) {
+	if !isKubectlSetImage(args) {
+		return rawCommand, nil
+	}
+
+	sanitized := rawCommand
+	preserved := make(map[string]string)
+	index := 0
+
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") || !strings.Contains(arg, "=") {
+			continue
+		}
+		if !isSafeImageAssignment(arg) {
+			continue
+		}
+
+		placeholder := "__INFRATRACK_IMG_ASSIGN_" + strconv.Itoa(index) + "__"
+		index++
+		sanitized = strings.ReplaceAll(sanitized, arg, placeholder)
+		preserved[placeholder] = arg
+	}
+
+	return sanitized, preserved
+}
+
+func isKubectlSetImage(args []string) bool {
+	if len(args) < 3 {
+		return false
+	}
+
+	binary := strings.ToLower(filepath.Base(args[0]))
+	if binary != "kubectl" && binary != "kubectl.exe" {
+		return false
+	}
+
+	return strings.EqualFold(args[1], "set") && strings.EqualFold(args[2], "image")
+}
+
+func isSafeImageAssignment(arg string) bool {
+	parts := strings.SplitN(arg, "=", 2)
+	if len(parts) != 2 {
+		return false
+	}
+
+	key := strings.ToLower(parts[0])
+	value := strings.ToLower(parts[1])
+	if key == "" || value == "" {
+		return false
+	}
+
+	if containsSensitiveKeyword(key) || containsSensitiveKeyword(value) {
+		return false
+	}
+
+	return !credentialInImageRef.MatchString(parts[1])
+}
+
+func containsSensitiveKeyword(v string) bool {
+	keywords := []string{
+		"token", "secret", "password", "passwd", "authorization", "bearer", "api_key", "apikey", "private_key",
+	}
+	for _, keyword := range keywords {
+		if strings.Contains(v, keyword) {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Policy) isDenied(rawCommand string, args []string) bool {
