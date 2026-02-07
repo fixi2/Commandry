@@ -37,6 +37,7 @@ jobs:
           GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/infratrack-darwin-amd64 ./cmd/infratrack
           GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/infratrack-darwin-arm64 ./cmd/infratrack
           GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/infratrack-windows-amd64.exe ./cmd/infratrack
+          cp dist/infratrack-windows-amd64.exe dist/infratrack.exe
 
       - name: Generate SHA256 checksums
         shell: bash
@@ -52,4 +53,5 @@ jobs:
             dist/infratrack-darwin-amd64
             dist/infratrack-darwin-arm64
             dist/infratrack-windows-amd64.exe
+            dist/infratrack.exe
             dist/checksums.txt

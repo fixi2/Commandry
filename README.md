@@ -2,6 +2,18 @@
 
 InfraTrack is a local-first CLI that records explicitly executed commands and exports a deterministic markdown runbook.
 
+## Install
+
+Windows (recommended once package is approved in winget):
+
+```bash
+winget install fixi2.InfraTrack
+```
+
+Manual fallback (all platforms):
+- download the latest binary from GitHub Releases
+- run it by full path, or add an alias with `infratrack alias --shell <powershell|bash|zsh|cmd>`
+
 ## Build
 
 Requirements:
