@@ -67,6 +67,20 @@ func TestPolicyApply(t *testing.T) {
 			denied:   false,
 			contains: `psql "host=[REDACTED] user=[REDACTED]"`,
 		},
+		{
+			name:     "preserve kubectl set image assignment",
+			raw:      "kubectl set image deployment/web api=repo/app:v2",
+			args:     []string{"kubectl", "set", "image", "deployment/web", "api=repo/app:v2"},
+			denied:   false,
+			contains: "api=repo/app:v2",
+		},
+		{
+			name:     "redact suspicious kubectl set image assignment",
+			raw:      "kubectl set image deployment/web api=user:pass@registry.local/app:v2",
+			args:     []string{"kubectl", "set", "image", "deployment/web", "api=user:pass@registry.local/app:v2"},
+			denied:   false,
+			contains: "api=[REDACTED]",
+		},
 	}
 
 	for _, tc := range tests {
