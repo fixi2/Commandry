@@ -38,6 +38,7 @@ func NewRootCommand() (*cobra.Command, error) {
 		newStartCmd(s),
 		newStopCmd(s),
 		newStatusCmd(s),
+		newDoctorCmd(s),
 		newRunCmd(s, p),
 		newExportCmd(s),
 		newSessionsCmd(s),
