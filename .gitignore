@@ -3,6 +3,10 @@
 runbooks/
 .infratrack/
 .private-dev-docs/
+.tests/
+.gocache/
 *.env
 *.key
 *.pem
+infratrack
+infratrack.exe

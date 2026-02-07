@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -156,6 +157,50 @@ func TestJSONStoreListSessionsAndByID(t *testing.T) {
 	_, err = s.SessionByID(ctx, "missing")
 	if !errors.Is(err, ErrSessionNotFound) {
 		t.Fatalf("expected ErrSessionNotFound, got %v", err)
+	}
+}
+
+func TestJSONStoreLastSessionLargeRecord(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	root := newRetryTempDir(t)
+	s := NewJSONStore(root)
+	if err := s.Init(ctx); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	start := time.Date(2026, 2, 7, 12, 0, 0, 0, time.UTC)
+	if _, err := s.StartSession(ctx, "Large session", "", start); err != nil {
+		t.Fatalf("start session failed: %v", err)
+	}
+
+	largeCmd := "cmd /c echo " + strings.Repeat("x", 16*1024)
+	for i := 0; i < 8; i++ {
+		if err := s.AddStep(ctx, Step{
+			Timestamp:  start.Add(time.Duration(i+1) * time.Second),
+			Command:    largeCmd,
+			Status:     "OK",
+			ExitCode:   intPtr(0),
+			DurationMS: 10,
+		}); err != nil {
+			t.Fatalf("add step %d failed: %v", i, err)
+		}
+	}
+
+	if _, err := s.StopSession(ctx, start.Add(20*time.Second)); err != nil {
+		t.Fatalf("stop session failed: %v", err)
+	}
+
+	last, err := s.LastSession(ctx)
+	if err != nil {
+		t.Fatalf("last session failed: %v", err)
+	}
+	if len(last.Steps) != 8 {
+		t.Fatalf("expected 8 steps, got %d", len(last.Steps))
+	}
+	if last.Steps[0].Command != largeCmd {
+		t.Fatalf("unexpected command payload length: got %d want %d", len(last.Steps[0].Command), len(largeCmd))
 	}
 }
 

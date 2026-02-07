@@ -20,6 +20,8 @@ var (
 	ErrSessionNotFound     = errors.New("session not found")
 )
 
+const maxSessionRecordBytes = 32 * 1024 * 1024
+
 type SessionStore interface {
 	Init(ctx context.Context) error
 	IsInitialized(ctx context.Context) (bool, error)
@@ -187,6 +189,7 @@ func (s *JSONStore) LastSession(_ context.Context) (*Session, error) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxSessionRecordBytes)
 	var lastLine string
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -353,6 +356,7 @@ func (s *JSONStore) readAllSessions() ([]Session, error) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxSessionRecordBytes)
 	sessions := make([]Session, 0, 32)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
