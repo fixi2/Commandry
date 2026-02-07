@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 )
@@ -11,7 +12,7 @@ func TestJSONStoreLifecycle(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	root := t.TempDir()
+	root := newRetryTempDir(t)
 	s := NewJSONStore(root)
 
 	_, err := s.StartSession(ctx, "deploy", "", time.Now().UTC())
@@ -105,7 +106,7 @@ func TestJSONStoreListSessionsAndByID(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	root := t.TempDir()
+	root := newRetryTempDir(t)
 	s := NewJSONStore(root)
 	if err := s.Init(ctx); err != nil {
 		t.Fatalf("init failed: %v", err)
@@ -160,4 +161,28 @@ func TestJSONStoreListSessionsAndByID(t *testing.T) {
 
 func intPtr(v int) *int {
 	return &v
+}
+
+func newRetryTempDir(t *testing.T) string {
+	t.Helper()
+
+	dir, err := os.MkdirTemp("", "infratrack-store-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+
+	t.Cleanup(func() {
+		var lastErr error
+		for i := 0; i < 20; i++ {
+			if err := os.RemoveAll(dir); err == nil {
+				return
+			} else {
+				lastErr = err
+				time.Sleep(15 * time.Millisecond)
+			}
+		}
+		t.Fatalf("cleanup temp dir failed: %v", lastErr)
+	})
+
+	return dir
 }

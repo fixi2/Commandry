@@ -377,15 +377,36 @@ func (s *JSONStore) writeJSONAtomic(path string, value any) error {
 		return fmt.Errorf("marshal json: %w", err)
 	}
 
-	tmpPath := path + ".tmp"
-	if err := os.WriteFile(tmpPath, payload, 0o600); err != nil {
+	dir := filepath.Dir(path)
+	base := filepath.Base(path)
+
+	tmpFile, err := os.CreateTemp(dir, base+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer func() {
+		_ = os.Remove(tmpPath)
+	}()
+
+	if _, err := tmpFile.Write(payload); err != nil {
+		_ = tmpFile.Close()
 		return fmt.Errorf("write temp file: %w", err)
 	}
-
-	_ = os.Remove(path)
-	if err := os.Rename(tmpPath, path); err != nil {
-		return fmt.Errorf("rename temp file: %w", err)
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("close temp file: %w", err)
 	}
 
-	return nil
+	var lastErr error
+	for i := 0; i < 6; i++ {
+		_ = os.Remove(path)
+		if err := os.Rename(tmpPath, path); err == nil {
+			return nil
+		} else {
+			lastErr = err
+			time.Sleep(time.Duration(i+1) * 10 * time.Millisecond)
+		}
+	}
+
+	return fmt.Errorf("rename temp file: %w", lastErr)
 }
