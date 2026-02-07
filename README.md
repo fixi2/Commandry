@@ -36,6 +36,7 @@ Expected output artifact:
 - `infratrack start "<title>"` (alias: `s`) starts recording session metadata. Optional environment label: `--env/-e`.
 - `infratrack run -- <cmd ...>` (alias: `r`) executes command and records a sanitized step.
 - `infratrack status` shows current recording state.
+- `infratrack doctor` runs local diagnostics (paths, write access, PATH hints, tool availability).
 - `infratrack stop` (alias: `stp`) finalizes the active session.
 - `infratrack export --last --md` (alias: `x`) exports the latest completed session to markdown.
 - `infratrack export --session <id> -f md` exports a specific completed session by id.
@@ -54,6 +55,17 @@ Use one of these forms:
 infratrack run -- cmd /c echo "build started"
 infratrack run -- powershell -NoProfile -Command "Write-Output 'build started'"
 ```
+
+## Diagnostics
+
+Use `infratrack doctor` when command resolution or local setup looks wrong.
+
+It prints:
+- InfraTrack paths (`root`, `config.yaml`, `sessions.jsonl`, `active_session.json`)
+- initialization status
+- storage writeability check
+- PATH-related hints (including Windows-specific hints)
+- availability of `kubectl`, `docker`, and `terraform`
 
 ## Data Location and Reset
 
