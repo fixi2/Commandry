@@ -40,6 +40,7 @@ func NewRootCommand() (*cobra.Command, error) {
 		newStatusCmd(s),
 		newRunCmd(s, p),
 		newExportCmd(s),
+		newSessionsCmd(s),
 		newVersionCmd(),
 	)
 
@@ -267,6 +268,7 @@ func newExportCmd(s store.SessionStore) *cobra.Command {
 		exportLast bool
 		exportMD   bool
 		exportFmt  string
+		sessionID  string
 	)
 
 	cmd := &cobra.Command{
@@ -274,8 +276,11 @@ func newExportCmd(s store.SessionStore) *cobra.Command {
 		Aliases: []string{"x"},
 		Short:   "Export a completed session as markdown",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !exportLast {
-				return errors.New("MVP currently supports only `infratrack export --last --md`")
+			if sessionID != "" && exportLast {
+				return errors.New("use either `--last` or `--session <id>`, not both")
+			}
+			if sessionID == "" && !exportLast {
+				return errors.New("provide `--last` or `--session <id>`")
 			}
 			if exportFmt == "" && exportMD {
 				exportFmt = "md"
@@ -287,12 +292,29 @@ func newExportCmd(s store.SessionStore) *cobra.Command {
 				return errors.New("unsupported format. MVP supports only markdown (`md`)")
 			}
 
-			session, err := s.LastSession(cmd.Context())
-			if err != nil {
-				if errors.Is(err, store.ErrNoSessions) {
-					return errors.New("no completed sessions found. Run start -> run -> stop first")
+			var (
+				session *store.Session
+				err     error
+			)
+			if sessionID != "" {
+				session, err = s.SessionByID(cmd.Context(), sessionID)
+				if err != nil {
+					if errors.Is(err, store.ErrSessionNotFound) {
+						return fmt.Errorf("session %q not found", sessionID)
+					}
+					if errors.Is(err, store.ErrNoSessions) {
+						return errors.New("no completed sessions found. Run start -> run -> stop first")
+					}
+					return fmt.Errorf("load session by id: %w", err)
 				}
-				return fmt.Errorf("load last session: %w", err)
+			} else {
+				session, err = s.LastSession(cmd.Context())
+				if err != nil {
+					if errors.Is(err, store.ErrNoSessions) {
+						return errors.New("no completed sessions found. Run start -> run -> stop first")
+					}
+					return fmt.Errorf("load last session: %w", err)
+				}
 			}
 
 			workingDir, err := os.Getwd()
@@ -311,8 +333,53 @@ func newExportCmd(s store.SessionStore) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&exportLast, "last", "l", false, "Export the most recent completed session")
+	cmd.Flags().StringVar(&sessionID, "session", "", "Export a specific completed session by id")
 	cmd.Flags().BoolVar(&exportMD, "md", false, "Export markdown output")
 	cmd.Flags().StringVarP(&exportFmt, "format", "f", "", "Export format (MVP: md)")
+	return cmd
+}
+
+func newSessionsCmd(s store.SessionStore) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "sessions",
+		Short: "Inspect completed sessions",
+	}
+	cmd.AddCommand(newSessionsListCmd(s))
+	return cmd
+}
+
+func newSessionsListCmd(s store.SessionStore) *cobra.Command {
+	var limit int
+
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List most recent completed sessions",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessions, err := s.ListSessions(cmd.Context(), limit)
+			if err != nil {
+				if errors.Is(err, store.ErrNoSessions) {
+					return errors.New("no completed sessions found")
+				}
+				return fmt.Errorf("list sessions: %w", err)
+			}
+
+			fmt.Fprintln(cmd.OutOrStdout(), "ID\tSTARTED\tTITLE\tSTEPS")
+			for _, session := range sessions {
+				fmt.Fprintf(
+					cmd.OutOrStdout(),
+					"%s\t%s\t%s\t%d\n",
+					session.ID,
+					session.StartedAt.Format(time.RFC3339),
+					session.Title,
+					len(session.Steps),
+				)
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "Number of most recent sessions to show")
 	return cmd
 }
 

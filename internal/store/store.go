@@ -17,6 +17,7 @@ var (
 	ErrActiveSessionExists = errors.New("active session already exists")
 	ErrNoActiveSession     = errors.New("no active session")
 	ErrNoSessions          = errors.New("no completed sessions")
+	ErrSessionNotFound     = errors.New("session not found")
 )
 
 type SessionStore interface {
@@ -28,6 +29,8 @@ type SessionStore interface {
 	AddStep(ctx context.Context, step Step) error
 	StopSession(ctx context.Context, endedAt time.Time) (*Session, error)
 	LastSession(ctx context.Context) (*Session, error)
+	ListSessions(ctx context.Context, limit int) ([]Session, error)
+	SessionByID(ctx context.Context, id string) (*Session, error)
 }
 
 type JSONStore struct {
@@ -206,6 +209,47 @@ func (s *JSONStore) LastSession(_ context.Context) (*Session, error) {
 	return &session, nil
 }
 
+func (s *JSONStore) ListSessions(_ context.Context, limit int) ([]Session, error) {
+	if err := s.requireInitialized(); err != nil {
+		return nil, err
+	}
+
+	sessions, err := s.readAllSessions()
+	if err != nil {
+		return nil, err
+	}
+	if len(sessions) == 0 {
+		return nil, ErrNoSessions
+	}
+	if limit <= 0 || limit > len(sessions) {
+		limit = len(sessions)
+	}
+
+	result := make([]Session, 0, limit)
+	for i := len(sessions) - 1; i >= 0 && len(result) < limit; i-- {
+		result = append(result, sessions[i])
+	}
+	return result, nil
+}
+
+func (s *JSONStore) SessionByID(_ context.Context, id string) (*Session, error) {
+	if err := s.requireInitialized(); err != nil {
+		return nil, err
+	}
+
+	sessions, err := s.readAllSessions()
+	if err != nil {
+		return nil, err
+	}
+	for i := len(sessions) - 1; i >= 0; i-- {
+		if sessions[i].ID == id {
+			session := sessions[i]
+			return &session, nil
+		}
+	}
+	return nil, ErrSessionNotFound
+}
+
 func (s *JSONStore) ensureConfigFile() error {
 	_, err := os.Stat(s.configPath)
 	if err == nil {
@@ -298,21 +342,71 @@ func (s *JSONStore) appendCompleted(session *Session) error {
 	return nil
 }
 
+func (s *JSONStore) readAllSessions() ([]Session, error) {
+	file, err := os.Open(s.sessionsPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, ErrNoSessions
+		}
+		return nil, fmt.Errorf("open sessions file: %w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	sessions := make([]Session, 0, 32)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var session Session
+		if err := json.Unmarshal([]byte(line), &session); err != nil {
+			return nil, fmt.Errorf("decode session: %w", err)
+		}
+		sessions = append(sessions, session)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scan sessions file: %w", err)
+	}
+	return sessions, nil
+}
+
 func (s *JSONStore) writeJSONAtomic(path string, value any) error {
 	payload, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("marshal json: %w", err)
 	}
 
-	tmpPath := path + ".tmp"
-	if err := os.WriteFile(tmpPath, payload, 0o600); err != nil {
+	dir := filepath.Dir(path)
+	base := filepath.Base(path)
+
+	tmpFile, err := os.CreateTemp(dir, base+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer func() {
+		_ = os.Remove(tmpPath)
+	}()
+
+	if _, err := tmpFile.Write(payload); err != nil {
+		_ = tmpFile.Close()
 		return fmt.Errorf("write temp file: %w", err)
 	}
-
-	_ = os.Remove(path)
-	if err := os.Rename(tmpPath, path); err != nil {
-		return fmt.Errorf("rename temp file: %w", err)
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("close temp file: %w", err)
 	}
 
-	return nil
+	var lastErr error
+	for i := 0; i < 6; i++ {
+		_ = os.Remove(path)
+		if err := os.Rename(tmpPath, path); err == nil {
+			return nil
+		} else {
+			lastErr = err
+			time.Sleep(time.Duration(i+1) * 10 * time.Millisecond)
+		}
+	}
+
+	return fmt.Errorf("rename temp file: %w", lastErr)
 }

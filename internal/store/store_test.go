@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 )
@@ -11,7 +12,7 @@ func TestJSONStoreLifecycle(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	root := t.TempDir()
+	root := newRetryTempDir(t)
 	s := NewJSONStore(root)
 
 	_, err := s.StartSession(ctx, "deploy", "", time.Now().UTC())
@@ -101,6 +102,87 @@ func TestJSONStoreLifecycle(t *testing.T) {
 	}
 }
 
+func TestJSONStoreListSessionsAndByID(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	root := newRetryTempDir(t)
+	s := NewJSONStore(root)
+	if err := s.Init(ctx); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	base := time.Date(2026, 2, 6, 12, 0, 0, 0, time.UTC)
+	for i := 0; i < 3; i++ {
+		start := base.Add(time.Duration(i) * time.Minute)
+		title := "Session " + string(rune('A'+i))
+		session, err := s.StartSession(ctx, title, "", start)
+		if err != nil {
+			t.Fatalf("start session %d failed: %v", i, err)
+		}
+		if err := s.AddStep(ctx, Step{
+			Timestamp:  start.Add(5 * time.Second),
+			Command:    "echo hello",
+			Status:     "OK",
+			ExitCode:   intPtr(0),
+			DurationMS: 10,
+		}); err != nil {
+			t.Fatalf("add step %d failed: %v", i, err)
+		}
+		if _, err := s.StopSession(ctx, start.Add(10*time.Second)); err != nil {
+			t.Fatalf("stop session %d failed: %v", i, err)
+		}
+
+		gotByID, err := s.SessionByID(ctx, session.ID)
+		if err != nil {
+			t.Fatalf("session by id %d failed: %v", i, err)
+		}
+		if gotByID.ID != session.ID {
+			t.Fatalf("session id mismatch: got %s want %s", gotByID.ID, session.ID)
+		}
+	}
+
+	recent, err := s.ListSessions(ctx, 2)
+	if err != nil {
+		t.Fatalf("list sessions failed: %v", err)
+	}
+	if len(recent) != 2 {
+		t.Fatalf("expected 2 sessions, got %d", len(recent))
+	}
+	if !recent[0].StartedAt.After(recent[1].StartedAt) {
+		t.Fatalf("sessions are not sorted by recency")
+	}
+
+	_, err = s.SessionByID(ctx, "missing")
+	if !errors.Is(err, ErrSessionNotFound) {
+		t.Fatalf("expected ErrSessionNotFound, got %v", err)
+	}
+}
+
 func intPtr(v int) *int {
 	return &v
+}
+
+func newRetryTempDir(t *testing.T) string {
+	t.Helper()
+
+	dir, err := os.MkdirTemp("", "infratrack-store-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+
+	t.Cleanup(func() {
+		var lastErr error
+		for i := 0; i < 20; i++ {
+			if err := os.RemoveAll(dir); err == nil {
+				return
+			} else {
+				lastErr = err
+				time.Sleep(15 * time.Millisecond)
+			}
+		}
+		t.Fatalf("cleanup temp dir failed: %v", lastErr)
+	})
+
+	return dir
 }
