@@ -3,6 +3,8 @@ package cli
 import (
 	"bytes"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -57,12 +59,24 @@ func TestPathContainsDir(t *testing.T) {
 	t.Parallel()
 
 	sep := string(os.PathListSeparator)
-	pathEnv := `C:\bin` + sep + `C:\Tools` + sep + `C:\Windows`
+	var pathEnv string
+	var target string
+	var missing string
 
-	if !pathContainsDir(pathEnv, `C:\Tools`) {
+	if runtime.GOOS == "windows" {
+		pathEnv = `C:\bin` + sep + `C:\Tools` + sep + `C:\Windows`
+		target = `C:\Tools`
+		missing = `C:\Missing`
+	} else {
+		pathEnv = "/usr/bin" + sep + "/opt/tools" + sep + "/usr/local/bin"
+		target = "/opt/tools"
+		missing = "/opt/missing"
+	}
+
+	if !pathContainsDir(pathEnv, filepath.Clean(target)) {
 		t.Fatalf("expected pathContainsDir to find directory")
 	}
-	if pathContainsDir(pathEnv, `C:\Missing`) {
+	if pathContainsDir(pathEnv, filepath.Clean(missing)) {
 		t.Fatalf("did not expect pathContainsDir to find missing directory")
 	}
 }
