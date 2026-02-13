@@ -275,6 +275,8 @@ func newExportCmd(s store.SessionStore) *cobra.Command {
 		exportMD   bool
 		exportFmt  string
 		sessionID  string
+		annotate   bool
+		noAnnotate bool
 	)
 
 	cmd := &cobra.Command{
@@ -284,6 +286,9 @@ func newExportCmd(s store.SessionStore) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if sessionID != "" && exportLast {
 				return errors.New("use either `--last` or `--session <id>`, not both")
+			}
+			if annotate && noAnnotate {
+				return errors.New("use either `--annotate` or `--no-annotate`, not both")
 			}
 			if sessionID == "" && !exportLast {
 				return errors.New("provide `--last` or `--session <id>`")
@@ -328,7 +333,14 @@ func newExportCmd(s store.SessionStore) *cobra.Command {
 				return fmt.Errorf("get current directory: %w", err)
 			}
 
-			outPath, err := export.WriteMarkdown(session, workingDir)
+			opts := export.MarkdownOptions{}
+			flagged := collectFlaggedSteps(session)
+			shouldPrompt := (annotate || (isInteractiveSession() && !noAnnotate)) && len(flagged) > 0
+			if shouldPrompt {
+				opts = promptForExportAnnotations(cmd.InOrStdin(), cmd.OutOrStdout(), session)
+			}
+
+			outPath, err := export.WriteMarkdownWithOptions(session, workingDir, opts)
 			if err != nil {
 				return fmt.Errorf("export markdown: %w", err)
 			}
@@ -342,6 +354,8 @@ func newExportCmd(s store.SessionStore) *cobra.Command {
 	cmd.Flags().StringVar(&sessionID, "session", "", "Export a specific completed session by id")
 	cmd.Flags().BoolVar(&exportMD, "md", false, "Export markdown output")
 	cmd.Flags().StringVarP(&exportFmt, "format", "f", "", "Export format (MVP: md)")
+	cmd.Flags().BoolVar(&annotate, "annotate", false, "Prompt for export comments on failed/redacted steps")
+	cmd.Flags().BoolVar(&noAnnotate, "no-annotate", false, "Skip export comment prompt")
 	return cmd
 }
 

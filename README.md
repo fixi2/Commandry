@@ -122,3 +122,20 @@ Run all tests:
 ```bash
 go test ./...
 ```
+
+## Antivirus Note for Contributors
+
+Some antivirus products may flag temporary Go test binaries (for example `*.test.exe`) during `go test`.
+This is usually a false positive for local build artifacts, not InfraTrack runtime behavior.
+
+If this happens on Windows, run tests with local cache/temp folders inside the repo:
+
+```powershell
+Set-Location C:\Projects\InfraTrack
+New-Item -ItemType Directory -Force .gocache, .gotmp | Out-Null
+$env:GOCACHE = "$PWD\.gocache"
+$env:GOTMPDIR = "$PWD\.gotmp"
+go test ./...
+```
+
+If your AV still blocks test binaries, add a narrow exclusion for the repository test build paths (`.gocache`, `.gotmp`) rather than disabling protection globally.

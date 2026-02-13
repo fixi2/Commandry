@@ -151,3 +151,39 @@ func TestDetectRollback(t *testing.T) {
 		})
 	}
 }
+
+func TestRenderMarkdownWithOptionsComments(t *testing.T) {
+	t.Parallel()
+
+	session := &store.Session{
+		ID:        "1",
+		Title:     "Annotated export",
+		StartedAt: time.Date(2026, 2, 12, 10, 0, 0, 0, time.UTC),
+		Steps: []store.Step{
+			{
+				Command:    "kubectl apply -f deploy.yaml",
+				Status:     "FAILED",
+				Reason:     "nonzero_exit",
+				ExitCode:   intPtr(1),
+				DurationMS: 100,
+			},
+		},
+	}
+
+	got := RenderMarkdownWithOptions(session, MarkdownOptions{
+		StepComments: map[int][]string{
+			0: {"Check kube context before retrying."},
+		},
+		GlobalComments: []string{"Reviewed by on-call."},
+	})
+
+	if !strings.Contains(got, "Comments:\n- Check kube context before retrying.") {
+		t.Fatalf("missing step comment in markdown: %s", got)
+	}
+	if !strings.Contains(got, "## Export Comments") {
+		t.Fatalf("missing export comments section: %s", got)
+	}
+	if !strings.Contains(got, "Applies to all flagged steps: Reviewed by on-call.") {
+		t.Fatalf("missing global flagged comment in export comments: %s", got)
+	}
+}

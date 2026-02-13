@@ -182,4 +182,10 @@ func TestShortFlags(t *testing.T) {
 	if exportCmd.Flags().Lookup("session") == nil {
 		t.Fatalf("flag --session is not configured for export")
 	}
+	if exportCmd.Flags().Lookup("annotate") == nil {
+		t.Fatalf("flag --annotate is not configured for export")
+	}
+	if exportCmd.Flags().Lookup("no-annotate") == nil {
+		t.Fatalf("flag --no-annotate is not configured for export")
+	}
 }
