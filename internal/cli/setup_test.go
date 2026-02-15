@@ -51,7 +51,7 @@ func TestSetupDryRunOutput(t *testing.T) {
 	if !strings.Contains(got, "Dry-run only") {
 		t.Fatalf("expected dry-run text, got: %s", got)
 	}
-	if !strings.Contains(got, "Actions:") {
+	if !strings.Contains(got, "Planned actions:") {
 		t.Fatalf("expected actions section, got: %s", got)
 	}
 }

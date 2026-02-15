@@ -73,15 +73,19 @@ func newSetupStatusCmd(parentBinDir *string, parentScope *string) *cobra.Command
 				return enc.Encode(status)
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "OS: %s\n", status.OS)
-			fmt.Fprintf(cmd.OutOrStdout(), "Scope: %s\n", status.Scope)
-			fmt.Fprintf(cmd.OutOrStdout(), "Current executable: %s\n", status.CurrentExe)
-			fmt.Fprintf(cmd.OutOrStdout(), "Target bin dir: %s\n", status.BinDir)
-			fmt.Fprintf(cmd.OutOrStdout(), "Target binary: %s\n", status.TargetBinaryPath)
-			fmt.Fprintf(cmd.OutOrStdout(), "Installed: %s\n", yesNo(status.Installed))
-			fmt.Fprintf(cmd.OutOrStdout(), "PATH contains bin dir: %s\n", yesNo(status.PathOK))
-			fmt.Fprintf(cmd.OutOrStdout(), "Setup state found: %s\n", yesNo(status.StateFound))
-			fmt.Fprintf(cmd.OutOrStdout(), "Pending finalize: %s\n", yesNo(status.PendingFinalize))
+			out := cmd.OutOrStdout()
+			fmt.Fprintln(out, "InfraTrack setup status")
+			fmt.Fprintln(out, "----------------------")
+			fmt.Fprintf(out, "OS                 : %s\n", status.OS)
+			fmt.Fprintf(out, "Scope              : %s\n", status.Scope)
+			fmt.Fprintf(out, "Current executable : %s\n", status.CurrentExe)
+			fmt.Fprintf(out, "Target bin dir     : %s\n", status.BinDir)
+			fmt.Fprintf(out, "Target binary      : %s\n", status.TargetBinaryPath)
+			fmt.Fprintln(out, "")
+			fmt.Fprintf(out, "Installed          : %s\n", statusWord(status.Installed))
+			fmt.Fprintf(out, "PATH configured    : %s\n", statusWord(status.PathOK))
+			fmt.Fprintf(out, "State file found   : %s\n", statusWord(status.StateFound))
+			fmt.Fprintf(out, "Pending finalize   : %s\n", statusWord(status.PendingFinalize))
 			return nil
 		},
 	}
@@ -126,26 +130,31 @@ func parseSetupInputs(scopeText, completionText string) (setup.Scope, setup.Comp
 }
 
 func printSetupPlan(cmd *cobra.Command, plan setup.Plan) {
-	fmt.Fprintf(cmd.OutOrStdout(), "Detected OS: %s\n", plan.OS)
-	fmt.Fprintf(cmd.OutOrStdout(), "Scope: %s\n", plan.Scope)
-	fmt.Fprintf(cmd.OutOrStdout(), "Current binary: %s\n", plan.CurrentExe)
-	fmt.Fprintf(cmd.OutOrStdout(), "Target bin dir: %s\n", plan.TargetBinDir)
-	fmt.Fprintf(cmd.OutOrStdout(), "Target binary: %s\n", plan.TargetBinaryPath)
-	fmt.Fprintln(cmd.OutOrStdout(), "Actions:")
+	out := cmd.OutOrStdout()
+	fmt.Fprintln(out, "InfraTrack setup plan [DRY-RUN]")
+	fmt.Fprintln(out, "--------------------------------")
+	fmt.Fprintf(out, "Detected OS         : %s\n", plan.OS)
+	fmt.Fprintf(out, "Scope               : %s\n", plan.Scope)
+	fmt.Fprintf(out, "Current executable  : %s\n", plan.CurrentExe)
+	fmt.Fprintf(out, "Target bin dir      : %s\n", plan.TargetBinDir)
+	fmt.Fprintf(out, "Target binary       : %s\n", plan.TargetBinaryPath)
+	fmt.Fprintln(out, "")
+	fmt.Fprintln(out, "Planned actions:")
 	for i, action := range plan.Actions {
-		fmt.Fprintf(cmd.OutOrStdout(), "  %d. %s\n", i+1, action)
+		fmt.Fprintf(out, "  %d) %s\n", i+1, action)
 	}
 	if len(plan.Notes) > 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "Notes:")
+		fmt.Fprintln(out, "")
+		fmt.Fprintln(out, "Notes:")
 		for _, note := range plan.Notes {
-			fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", note)
+			fmt.Fprintf(out, "  - %s\n", note)
 		}
 	}
 }
 
-func yesNo(v bool) string {
+func statusWord(v bool) string {
 	if v {
-		return "yes"
+		return "OK"
 	}
-	return "no"
+	return "NO"
 }
