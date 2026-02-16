@@ -35,8 +35,6 @@ func newSetupCmd() *cobra.Command {
 			}
 
 			out := cmd.OutOrStdout()
-			fmt.Fprintln(out, "InfraTrack setup")
-			fmt.Fprintln(out, "")
 			fmt.Fprintln(out, "Will install to:")
 			fmt.Fprintf(out, "  %s\n", plan.TargetBinaryPath)
 			fmt.Fprintln(out, "PATH:")
@@ -259,10 +257,9 @@ func printSetupPlan(cmd *cobra.Command, plan setup.Plan) {
 
 func printSetupApplyResult(out io.Writer, result setup.ApplyResult, noPath bool, verbose bool, showSummary bool) {
 	if verbose {
-		fmt.Fprintln(out, "InfraTrack setup apply")
-		fmt.Fprintln(out, "---------------------")
+		fmt.Fprintln(out, "Actions:")
 		for i, action := range result.Actions {
-			fmt.Fprintf(out, "%d) %s\n", i+1, action)
+			fmt.Fprintf(out, "  %d) %s\n", i+1, action)
 		}
 		if len(result.Notes) > 0 {
 			fmt.Fprintln(out, "")
