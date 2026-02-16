@@ -37,6 +37,7 @@ func NewRootCommand() (*cobra.Command, error) {
 	rootCmd.SilenceErrors = true
 	rootCmd.AddCommand(
 		newInitCmd(s),
+		newSetupCmd(),
 		newStartCmd(s),
 		newStopCmd(s),
 		newStatusCmd(s),
