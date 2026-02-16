@@ -14,10 +14,11 @@ import (
 
 func newSetupCmd() *cobra.Command {
 	cfg := &setupCommandConfig{}
+	var yes bool
 
 	cmd := &cobra.Command{
 		Use:   "setup",
-		Short: "Plan local InfraTrack installation and PATH integration",
+		Short: "Install InfraTrack for the current user",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			scope, completion, err := parseSetupInputs(cfg.scopeText, cfg.completionRaw)
 			if err != nil {
@@ -32,7 +33,38 @@ func newSetupCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			printSetupPlan(cmd, plan)
+
+			out := cmd.OutOrStdout()
+			fmt.Fprintln(out, "InfraTrack setup")
+			fmt.Fprintf(out, "Target binary: %s\n", plan.TargetBinaryPath)
+			if cfg.noPath {
+				fmt.Fprintln(out, "PATH: unchanged (--no-path)")
+			} else {
+				fmt.Fprintf(out, "PATH: ensure %s is in user PATH\n", plan.TargetBinDir)
+			}
+			fmt.Fprintln(out, "Run `infratrack setup plan` for full dry-run details.")
+
+			if !yes {
+				ok, err := confirmSetupApply(cmd)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					fmt.Fprintln(out, "Cancelled.")
+					return nil
+				}
+			}
+
+			result, err := setup.Apply(setup.ApplyInput{
+				Scope:      scope,
+				BinDir:     cfg.binDir,
+				NoPath:     cfg.noPath,
+				Completion: completion,
+			})
+			if err != nil {
+				return err
+			}
+			printSetupApplyResult(out, result, cfg.noPath, false)
 			return nil
 		},
 	}
@@ -41,7 +73,9 @@ func newSetupCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&cfg.scopeText, "scope", string(setup.ScopeUser), "Setup scope: user")
 	cmd.PersistentFlags().BoolVar(&cfg.noPath, "no-path", false, "Do not modify PATH")
 	cmd.PersistentFlags().StringVar(&cfg.completionRaw, "completion", string(setup.CompletionNone), "Completion setup mode: none")
+	cmd.Flags().BoolVar(&yes, "yes", false, "Apply without interactive confirmation")
 
+	cmd.AddCommand(newSetupPlanCmd(cfg))
 	cmd.AddCommand(newSetupStatusCmd(cfg))
 	cmd.AddCommand(newSetupApplyCmd(cfg))
 	cmd.AddCommand(newSetupUndoCmd())
@@ -98,6 +132,30 @@ func newSetupStatusCmd(cfg *setupCommandConfig) *cobra.Command {
 	return cmd
 }
 
+func newSetupPlanCmd(cfg *setupCommandConfig) *cobra.Command {
+	return &cobra.Command{
+		Use:   "plan",
+		Short: "Show detailed setup dry-run plan",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			scope, completion, err := parseSetupInputs(cfg.scopeText, cfg.completionRaw)
+			if err != nil {
+				return err
+			}
+			plan, err := setup.BuildPlan(setup.PlanInput{
+				Scope:      scope,
+				BinDir:     cfg.binDir,
+				NoPath:     cfg.noPath,
+				Completion: completion,
+			})
+			if err != nil {
+				return err
+			}
+			printSetupPlan(cmd, plan)
+			return nil
+		},
+	}
+}
+
 func newSetupApplyCmd(cfg *setupCommandConfig) *cobra.Command {
 	var yes bool
 	var verbose bool
@@ -112,7 +170,7 @@ func newSetupApplyCmd(cfg *setupCommandConfig) *cobra.Command {
 			}
 
 			if !yes {
-				fmt.Fprintln(cmd.OutOrStdout(), "Run `infratrack setup` to review the full dry-run plan.")
+				fmt.Fprintln(cmd.OutOrStdout(), "Run `infratrack setup plan` to review the full dry-run plan.")
 				ok, err := confirmSetupApply(cmd)
 				if err != nil {
 					return err
@@ -132,36 +190,7 @@ func newSetupApplyCmd(cfg *setupCommandConfig) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			out := cmd.OutOrStdout()
-			if verbose {
-				fmt.Fprintln(out, "InfraTrack setup apply")
-				fmt.Fprintln(out, "---------------------")
-				for i, action := range result.Actions {
-					fmt.Fprintf(out, "%d) %s\n", i+1, action)
-				}
-				if len(result.Notes) > 0 {
-					fmt.Fprintln(out, "")
-					fmt.Fprintln(out, "Notes:")
-					for _, note := range result.Notes {
-						fmt.Fprintf(out, "- %s\n", note)
-					}
-				}
-				return nil
-			}
-
-			if result.PendingFinalize {
-				fmt.Fprintln(out, "Setup staged. Restart terminal, then run `infratrack setup apply` again.")
-			} else {
-				fmt.Fprintln(out, "Setup complete.")
-			}
-			fmt.Fprintf(out, "Binary: %s\n", result.InstalledBinPath)
-			if cfg.noPath {
-				fmt.Fprintln(out, "PATH: unchanged (--no-path)")
-			} else {
-				fmt.Fprintln(out, "PATH: pending (will be added in the next setup phase)")
-			}
-			fmt.Fprintln(out, "Use `infratrack setup status` for details.")
+			printSetupApplyResult(cmd.OutOrStdout(), result, cfg.noPath, verbose)
 			return nil
 		},
 	}
@@ -227,6 +256,37 @@ func printSetupPlan(cmd *cobra.Command, plan setup.Plan) {
 			fmt.Fprintf(out, "  - %s\n", note)
 		}
 	}
+}
+
+func printSetupApplyResult(out io.Writer, result setup.ApplyResult, noPath bool, verbose bool) {
+	if verbose {
+		fmt.Fprintln(out, "InfraTrack setup apply")
+		fmt.Fprintln(out, "---------------------")
+		for i, action := range result.Actions {
+			fmt.Fprintf(out, "%d) %s\n", i+1, action)
+		}
+		if len(result.Notes) > 0 {
+			fmt.Fprintln(out, "")
+			fmt.Fprintln(out, "Notes:")
+			for _, note := range result.Notes {
+				fmt.Fprintf(out, "- %s\n", note)
+			}
+		}
+		return
+	}
+
+	if result.PendingFinalize {
+		fmt.Fprintln(out, "Setup staged. Restart terminal, then run `infratrack setup apply` again.")
+	} else {
+		fmt.Fprintln(out, "Setup complete.")
+	}
+	fmt.Fprintf(out, "Binary: %s\n", result.InstalledBinPath)
+	if noPath {
+		fmt.Fprintln(out, "PATH: unchanged (--no-path)")
+	} else {
+		fmt.Fprintln(out, "PATH: pending (will be added in the next setup phase)")
+	}
+	fmt.Fprintln(out, "Use `infratrack setup status` for details.")
 }
 
 func statusWord(v bool) string {

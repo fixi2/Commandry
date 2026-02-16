@@ -31,6 +31,14 @@ func TestSetupCommandsExist(t *testing.T) {
 		t.Fatalf("setup status command not found")
 	}
 
+	setupPlan, _, err := root.Find([]string{"setup", "plan"})
+	if err != nil {
+		t.Fatalf("root.Find(setup plan) failed: %v", err)
+	}
+	if setupPlan == nil || setupPlan.Name() != "plan" {
+		t.Fatalf("setup plan command not found")
+	}
+
 	setupApply, _, err := root.Find([]string{"setup", "apply"})
 	if err != nil {
 		t.Fatalf("root.Find(setup apply) failed: %v", err)
@@ -40,7 +48,7 @@ func TestSetupCommandsExist(t *testing.T) {
 	}
 }
 
-func TestSetupDryRunOutput(t *testing.T) {
+func TestSetupPlanOutput(t *testing.T) {
 	t.Parallel()
 
 	root, err := NewRootCommand()
@@ -50,10 +58,10 @@ func TestSetupDryRunOutput(t *testing.T) {
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetErr(&out)
-	root.SetArgs([]string{"setup", "--scope", "user", "--completion", "none"})
+	root.SetArgs([]string{"setup", "plan", "--scope", "user", "--completion", "none"})
 
 	if err := root.Execute(); err != nil {
-		t.Fatalf("setup dry-run failed: %v", err)
+		t.Fatalf("setup plan failed: %v", err)
 	}
 	got := out.String()
 	if !strings.Contains(got, "Dry-run only") {
@@ -118,5 +126,35 @@ func TestSetupApplyYes(t *testing.T) {
 	}
 	if !strings.Contains(got, "Use `infratrack setup status` for details.") {
 		t.Fatalf("expected follow-up status hint, got: %s", got)
+	}
+}
+
+func TestSetupCommandShowsQuickFlowAndCancels(t *testing.T) {
+	t.Parallel()
+
+	root, err := NewRootCommand()
+	if err != nil {
+		t.Fatalf("NewRootCommand failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetIn(strings.NewReader("n\n"))
+	root.SetArgs([]string{"setup", "--scope", "user", "--completion", "none", "--no-path"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("setup command failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "InfraTrack setup") {
+		t.Fatalf("expected setup header, got: %s", got)
+	}
+	if !strings.Contains(got, "Run `infratrack setup plan` for full dry-run details.") {
+		t.Fatalf("expected plan hint, got: %s", got)
+	}
+	if !strings.Contains(got, "Cancelled.") {
+		t.Fatalf("expected cancellation output, got: %s", got)
 	}
 }
