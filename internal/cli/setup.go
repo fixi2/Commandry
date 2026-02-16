@@ -35,13 +35,17 @@ func newSetupCmd() *cobra.Command {
 			}
 
 			out := cmd.OutOrStdout()
-			fmt.Fprintf(out, "Target binary: %s\n", plan.TargetBinaryPath)
+			fmt.Fprintln(out, "InfraTrack setup")
+			fmt.Fprintln(out, "")
+			fmt.Fprintln(out, "Will install to:")
+			fmt.Fprintf(out, "  %s\n", plan.TargetBinaryPath)
+			fmt.Fprintln(out, "PATH:")
 			if cfg.noPath {
-				fmt.Fprintln(out, "PATH: unchanged (--no-path)")
+				fmt.Fprintln(out, "  unchanged (--no-path)")
 			} else {
-				fmt.Fprintf(out, "PATH: ensure %s is in user PATH\n", plan.TargetBinDir)
+				fmt.Fprintf(out, "  ensure %s is in user PATH\n", plan.TargetBinDir)
 			}
-			fmt.Fprintln(out, "Run `infratrack setup plan` for full dry-run details.")
+			fmt.Fprintln(out, "")
 
 			if !yes {
 				ok, err := confirmSetupApply(cmd)
@@ -236,25 +240,21 @@ func confirmSetupApply(cmd *cobra.Command) (bool, error) {
 
 func printSetupPlan(cmd *cobra.Command, plan setup.Plan) {
 	out := cmd.OutOrStdout()
-	fmt.Fprintln(out, "InfraTrack setup plan [DRY-RUN]")
-	fmt.Fprintln(out, "--------------------------------")
-	fmt.Fprintf(out, "Detected OS         : %s\n", plan.OS)
-	fmt.Fprintf(out, "Scope               : %s\n", plan.Scope)
-	fmt.Fprintf(out, "Current executable  : %s\n", plan.CurrentExe)
-	fmt.Fprintf(out, "Target bin dir      : %s\n", plan.TargetBinDir)
-	fmt.Fprintf(out, "Target binary       : %s\n", plan.TargetBinaryPath)
+	fmt.Fprintln(out, "InfraTrack setup plan (dry-run)")
 	fmt.Fprintln(out, "")
-	fmt.Fprintln(out, "Planned actions:")
-	for i, action := range plan.Actions {
-		fmt.Fprintf(out, "  %d) %s\n", i+1, action)
+
+	fmt.Fprintln(out, "Target:")
+	fmt.Fprintf(out, "  binary: %s\n", plan.TargetBinaryPath)
+	fmt.Fprintf(out, "  scope : %s\n", plan.Scope)
+	fmt.Fprintln(out, "")
+
+	fmt.Fprintln(out, "Actions:")
+	for _, action := range plan.Actions {
+		fmt.Fprintf(out, "  - %s\n", action)
 	}
-	if len(plan.Notes) > 0 {
-		fmt.Fprintln(out, "")
-		fmt.Fprintln(out, "Notes:")
-		for _, note := range plan.Notes {
-			fmt.Fprintf(out, "  - %s\n", note)
-		}
-	}
+	fmt.Fprintln(out, "")
+	fmt.Fprintln(out, "No changes were made.")
+	fmt.Fprintln(out, "Use `infratrack setup` to apply.")
 }
 
 func printSetupApplyResult(out io.Writer, result setup.ApplyResult, noPath bool, verbose bool, showSummary bool) {
@@ -275,17 +275,21 @@ func printSetupApplyResult(out io.Writer, result setup.ApplyResult, noPath bool,
 	}
 
 	if result.PendingFinalize {
-		fmt.Fprintln(out, "Setup staged. Restart terminal, then run `infratrack setup apply` again.")
+		fmt.Fprintln(out, "[WARN] Setup staged")
+		fmt.Fprintln(out, "Current binary is in use. Restart terminal and run:")
+		fmt.Fprintln(out, "  infratrack setup apply")
+		return
 	} else {
-		fmt.Fprintln(out, "Setup complete.")
+		fmt.Fprintln(out, "[OK] Setup complete")
 	}
 	if showSummary {
-		fmt.Fprintf(out, "Binary: %s\n", result.InstalledBinPath)
+		fmt.Fprintf(out, "- binary: %s\n", result.InstalledBinPath)
 		if noPath {
-			fmt.Fprintln(out, "PATH: unchanged (--no-path)")
+			fmt.Fprintln(out, "- path  : unchanged (--no-path)")
 		} else {
-			fmt.Fprintln(out, "PATH: pending (will be added in the next setup phase)")
+			fmt.Fprintln(out, "- path  : pending (will be added in the next setup phase)")
 		}
+		fmt.Fprintln(out, "")
 	}
 	fmt.Fprintln(out, "Use `infratrack setup status` for details.")
 }

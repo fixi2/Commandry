@@ -33,27 +33,21 @@ func BuildPlan(input PlanInput) (Plan, error) {
 
 	actions := make([]string, 0, 4)
 	if normalizePathForCompare(exe) == normalizePathForCompare(targetBinary) {
-		actions = append(actions, "Binary already runs from target location (no copy needed).")
+		actions = append(actions, "binary already installed (no copy needed)")
 	} else {
-		actions = append(actions, fmt.Sprintf("Copy binary to %s", targetBinary))
+		actions = append(actions, "install binary")
 	}
 
 	if input.NoPath {
-		actions = append(actions, "Skip PATH changes (--no-path).")
+		actions = append(actions, "skip PATH update (--no-path)")
 	} else if PathContainsDir(os.Getenv("PATH"), binDir) {
-		actions = append(actions, "PATH already contains target bin dir (no change).")
+		actions = append(actions, "PATH already configured (no change)")
 	} else {
-		actions = append(actions, fmt.Sprintf("Add %s to user PATH", binDir))
+		actions = append(actions, "add target bin dir to user PATH")
 	}
 
 	if input.Completion == CompletionNone {
-		actions = append(actions, "Completion: none")
-	}
-
-	notes := []string{
-		"Dry-run only. No changes are applied.",
-		"Run `infratrack setup` to apply changes now, or `infratrack setup apply` for direct apply.",
-		"Restart terminal after PATH changes to pick up updates.",
+		actions = append(actions, "completion: none")
 	}
 
 	return Plan{
@@ -63,7 +57,6 @@ func BuildPlan(input PlanInput) (Plan, error) {
 		TargetBinDir:     binDir,
 		TargetBinaryPath: targetBinary,
 		Actions:          actions,
-		Notes:            notes,
 	}, nil
 }
 

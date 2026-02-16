@@ -24,8 +24,8 @@ func TestBuildPlanDryRun(t *testing.T) {
 	if len(plan.Actions) == 0 {
 		t.Fatalf("expected actions in plan")
 	}
-	if !strings.Contains(strings.Join(plan.Notes, " "), "Dry-run") {
-		t.Fatalf("expected dry-run note, got %v", plan.Notes)
+	if len(plan.Notes) != 0 {
+		t.Fatalf("expected no notes in compact plan, got %v", plan.Notes)
 	}
 }
 

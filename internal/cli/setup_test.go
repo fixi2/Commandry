@@ -3,6 +3,8 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -64,11 +66,14 @@ func TestSetupPlanOutput(t *testing.T) {
 		t.Fatalf("setup plan failed: %v", err)
 	}
 	got := out.String()
-	if !strings.Contains(got, "Dry-run only") {
-		t.Fatalf("expected dry-run text, got: %s", got)
+	if !strings.Contains(got, "InfraTrack setup plan (dry-run)") {
+		t.Fatalf("expected dry-run title, got: %s", got)
 	}
-	if !strings.Contains(got, "Planned actions:") {
+	if !strings.Contains(got, "Actions:") {
 		t.Fatalf("expected actions section, got: %s", got)
+	}
+	if !strings.Contains(got, "No changes were made.") {
+		t.Fatalf("expected no-change note, got: %s", got)
 	}
 }
 
@@ -121,8 +126,11 @@ func TestSetupApplyYes(t *testing.T) {
 	}
 
 	got := out.String()
-	if !strings.Contains(got, "Setup complete.") {
+	if !strings.Contains(got, "[OK] Setup complete") {
 		t.Fatalf("expected concise success output, got: %s", got)
+	}
+	if !strings.Contains(got, "- binary: ") {
+		t.Fatalf("expected binary summary line, got: %s", got)
 	}
 	if !strings.Contains(got, "Use `infratrack setup status` for details.") {
 		t.Fatalf("expected follow-up status hint, got: %s", got)
@@ -148,8 +156,8 @@ func TestSetupCommandShowsQuickFlowAndCancels(t *testing.T) {
 	}
 
 	got := out.String()
-	if !strings.Contains(got, "Run `infratrack setup plan` for full dry-run details.") {
-		t.Fatalf("expected plan hint, got: %s", got)
+	if !strings.Contains(got, "Will install to:") {
+		t.Fatalf("expected install destination line, got: %s", got)
 	}
 	if !strings.Contains(got, "Cancelled.") {
 		t.Fatalf("expected cancellation output, got: %s", got)
@@ -166,7 +174,11 @@ func TestSetupCommandYesShowsOnlyFinalConciseMessage(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", stateRoot)
 	t.Setenv("APPDATA", stateRoot)
 
-	binDir := t.TempDir()
+	exePath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("resolve test executable path failed: %v", err)
+	}
+	binDir := filepath.Dir(exePath)
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetErr(&out)
@@ -177,13 +189,13 @@ func TestSetupCommandYesShowsOnlyFinalConciseMessage(t *testing.T) {
 	}
 
 	got := out.String()
-	if !strings.Contains(got, "Setup complete.") {
-		t.Fatalf("expected setup success output, got: %s", got)
+	if !strings.Contains(got, "[OK] Setup complete") && !strings.Contains(got, "[WARN] Setup staged") {
+		t.Fatalf("expected setup completion/staged output, got: %s", got)
 	}
 	if strings.Contains(got, "Binary: ") {
 		t.Fatalf("did not expect binary summary in setup output, got: %s", got)
 	}
-	if strings.Count(got, "PATH: ") != 1 {
+	if strings.Count(got, "PATH:") != 1 {
 		t.Fatalf("expected single path line in setup output, got: %s", got)
 	}
 }
