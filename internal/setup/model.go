@@ -48,16 +48,18 @@ type ApplyInput struct {
 }
 
 type ApplyResult struct {
-	OS               string   `json:"os"`
-	Scope            Scope    `json:"scope"`
-	SourceBinaryPath string   `json:"sourceBinaryPath"`
-	TargetBinDir     string   `json:"targetBinDir"`
-	InstalledBinPath string   `json:"installedBinPath"`
-	StatePath        string   `json:"statePath"`
-	CreatedDirs      []string `json:"createdDirs,omitempty"`
-	PendingFinalize  bool     `json:"pendingFinalize"`
-	Actions          []string `json:"actions"`
-	Notes            []string `json:"notes,omitempty"`
+	OS               string        `json:"os"`
+	Scope            Scope         `json:"scope"`
+	SourceBinaryPath string        `json:"sourceBinaryPath"`
+	TargetBinDir     string        `json:"targetBinDir"`
+	InstalledBinPath string        `json:"installedBinPath"`
+	StatePath        string        `json:"statePath"`
+	CreatedDirs      []string      `json:"createdDirs,omitempty"`
+	PathEntryAdded   string        `json:"pathEntryAdded,omitempty"`
+	FilesTouched     []TouchedFile `json:"filesTouched,omitempty"`
+	PendingFinalize  bool          `json:"pendingFinalize"`
+	Actions          []string      `json:"actions"`
+	Notes            []string      `json:"notes,omitempty"`
 }
 
 type Plan struct {

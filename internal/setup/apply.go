@@ -104,7 +104,22 @@ func Apply(input ApplyInput) (ApplyResult, error) {
 	if input.NoPath {
 		res.Actions = append(res.Actions, "Skipped PATH updates (--no-path).")
 	} else {
-		res.Actions = append(res.Actions, "PATH changes are planned but not applied in this phase.")
+		pathRes, err := ensureUserPathConfigured(binDir)
+		if err != nil {
+			return res, err
+		}
+		if pathRes.Action != "" {
+			res.Actions = append(res.Actions, pathRes.Action)
+		}
+		if pathRes.Note != "" {
+			res.Notes = append(res.Notes, pathRes.Note)
+		}
+		if pathRes.PathEntry != "" {
+			res.PathEntryAdded = pathRes.PathEntry
+		}
+		if len(pathRes.FilesTouched) > 0 {
+			res.FilesTouched = append(res.FilesTouched, pathRes.FilesTouched...)
+		}
 	}
 
 	statePath, err := DefaultStatePath()
@@ -116,8 +131,8 @@ func Apply(input ApplyInput) (ApplyResult, error) {
 		SchemaVersion:    StateSchemaVersion,
 		CreatedDirs:      append([]string(nil), res.CreatedDirs...),
 		InstalledBinPath: target,
-		PathEntryAdded:   "",
-		FilesTouched:     nil,
+		PathEntryAdded:   res.PathEntryAdded,
+		FilesTouched:     append([]TouchedFile(nil), res.FilesTouched...),
 		PendingFinalize:  res.PendingFinalize,
 		Timestamp:        time.Now().UTC(),
 	}
