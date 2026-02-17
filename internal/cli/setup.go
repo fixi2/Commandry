@@ -290,7 +290,7 @@ func printSetupApplyResult(out io.Writer, result setup.ApplyResult, noPath bool,
 		fmt.Fprintln(out, "")
 	}
 	if !noPath {
-		fmt.Fprintln(out, "Restart terminal (VS Code users: reopen terminal app) to load updated PATH.")
+		fmt.Fprintln(out, "Restart terminal to load updated PATH.")
 	}
 	fmt.Fprintln(out, "Use `infratrack setup status` for details.")
 }
