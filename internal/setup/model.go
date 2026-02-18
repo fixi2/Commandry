@@ -83,3 +83,9 @@ type Status struct {
 	StateFound       bool   `json:"stateFound"`
 	PendingFinalize  bool   `json:"pendingFinalize"`
 }
+
+type UndoResult struct {
+	StatePath string   `json:"statePath"`
+	Changed   bool     `json:"changed"`
+	Actions   []string `json:"actions,omitempty"`
+}

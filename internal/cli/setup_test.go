@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/fixi2/InfraTrack/internal/setup"
 )
 
 func TestSetupCommandsExist(t *testing.T) {
@@ -197,5 +200,72 @@ func TestSetupCommandYesShowsOnlyFinalConciseMessage(t *testing.T) {
 	}
 	if strings.Count(got, "PATH:") != 1 {
 		t.Fatalf("expected single path line in setup output, got: %s", got)
+	}
+}
+
+func TestSetupUndoNoState(t *testing.T) {
+	root, err := NewRootCommand()
+	if err != nil {
+		t.Fatalf("NewRootCommand failed: %v", err)
+	}
+
+	stateRoot := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", stateRoot)
+	t.Setenv("APPDATA", stateRoot)
+
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs([]string{"setup", "undo"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("setup undo failed: %v", err)
+	}
+	if !strings.Contains(out.String(), "Nothing to undo.") {
+		t.Fatalf("expected no-op undo output, got: %s", out.String())
+	}
+}
+
+func TestSetupUndoRevertsState(t *testing.T) {
+	root, err := NewRootCommand()
+	if err != nil {
+		t.Fatalf("NewRootCommand failed: %v", err)
+	}
+
+	stateRoot := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", stateRoot)
+	t.Setenv("APPDATA", stateRoot)
+
+	binDir := filepath.Join(stateRoot, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir bin failed: %v", err)
+	}
+	binPath := setup.ResolveTargetBinaryPath(binDir)
+	if err := os.WriteFile(binPath, []byte("x"), 0o700); err != nil {
+		t.Fatalf("write bin failed: %v", err)
+	}
+
+	statePath, err := setup.DefaultStatePath()
+	if err != nil {
+		t.Fatalf("DefaultStatePath failed: %v", err)
+	}
+	if err := setup.SaveState(statePath, setup.StateFile{
+		SchemaVersion:    setup.StateSchemaVersion,
+		InstalledBinPath: binPath,
+		Timestamp:        time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("SaveState failed: %v", err)
+	}
+
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs([]string{"setup", "undo"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("setup undo failed: %v", err)
+	}
+	if !strings.Contains(out.String(), "[OK] Setup changes reverted") {
+		t.Fatalf("expected successful undo output, got: %s", out.String())
 	}
 }

@@ -204,8 +204,21 @@ func newSetupUndoCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "undo",
 		Short: "Undo setup changes",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return errors.New("setup undo is not implemented in this build yet")
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			result, err := setup.Undo()
+			if err != nil {
+				return err
+			}
+			out := cmd.OutOrStdout()
+			if !result.Changed {
+				fmt.Fprintln(out, "Nothing to undo.")
+				return nil
+			}
+			fmt.Fprintln(out, "[OK] Setup changes reverted")
+			for _, action := range result.Actions {
+				fmt.Fprintf(out, "- %s\n", action)
+			}
+			return nil
 		},
 	}
 }
