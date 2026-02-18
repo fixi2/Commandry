@@ -4,9 +4,21 @@ InfraTrack is a local-first CLI that records explicitly executed commands and ex
 
 ## Install
 
-Manual install (all platforms):
+Primary path (pre-`v1.0.0`):
 - download the latest binary from GitHub Releases
-- run it by full path, or add an alias with `infratrack alias --shell <powershell|bash|zsh|cmd>`
+- run once by path (for example `.\infratrack.exe` on Windows), then run setup:
+  - `infratrack setup`
+  - `infratrack setup status`
+
+Setup commands:
+- `infratrack setup` - interactive install flow (bin + user PATH)
+- `infratrack setup plan` - preview setup actions (no changes)
+- `infratrack setup apply` - non-interactive/direct apply
+- `infratrack setup undo` - revert setup changes recorded in setup state
+
+Notes:
+- restart terminal after PATH updates
+- `winget` flow is intentionally not primary before `v1.0.0`
 - macOS is not directly tested in CI yet; `zsh` support is expected to work via POSIX-compatible hooks.
 
 ## Build
@@ -40,6 +52,11 @@ Expected output artifact:
 ## CLI Commands
 
 - `infratrack init` (alias: `i`) initializes local config and session storage in `os.UserConfigDir()/infratrack`.
+- `infratrack setup` installs InfraTrack to the user bin path and updates user PATH.
+- `infratrack setup plan` previews setup actions without applying changes.
+- `infratrack setup apply` applies setup changes directly (supports `--yes` and `--verbose`).
+- `infratrack setup status` shows setup status for current or specified `--bin-dir`.
+- `infratrack setup undo` reverts setup changes based on setup state.
 - `infratrack start "<title>"` (alias: `s`) starts recording session metadata. Optional environment label: `--env/-e`.
 - `infratrack run -- <cmd ...>` (alias: `r`) executes command and records a sanitized step.
 - `infratrack status` shows current recording state.

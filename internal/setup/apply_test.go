@@ -50,3 +50,77 @@ func TestApplyWindowsStagingName(t *testing.T) {
 		t.Fatalf("unexpected staging path: %s", got)
 	}
 }
+
+func TestApplyWindowsPreservesPathOwnershipAcrossIdempotentApply(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("windows-only")
+	}
+
+	root := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", root)
+	t.Setenv("APPDATA", filepath.Join(root, "AppData", "Roaming"))
+
+	prevRead := readWindowsUserPathFn
+	prevWrite := writeWindowsUserPathFn
+	defer func() {
+		readWindowsUserPathFn = prevRead
+		writeWindowsUserPathFn = prevWrite
+	}()
+
+	userPath := `C:\Tools`
+	readWindowsUserPathFn = func() (string, error) { return userPath, nil }
+	writeWindowsUserPathFn = func(v string) error {
+		userPath = v
+		return nil
+	}
+
+	source := filepath.Join(root, "source-bin.exe")
+	if err := os.WriteFile(source, []byte("infratrack-binary"), 0o700); err != nil {
+		t.Fatalf("write source failed: %v", err)
+	}
+	binDir := filepath.Join(root, "bin")
+
+	first, err := Apply(ApplyInput{
+		Scope:            ScopeUser,
+		BinDir:           binDir,
+		NoPath:           false,
+		Completion:       CompletionNone,
+		SourceBinaryPath: source,
+	})
+	if err != nil {
+		t.Fatalf("1st Apply failed: %v", err)
+	}
+	if first.PathEntryAdded == "" {
+		t.Fatalf("expected path entry to be recorded on first apply")
+	}
+
+	second, err := Apply(ApplyInput{
+		Scope:            ScopeUser,
+		BinDir:           binDir,
+		NoPath:           false,
+		Completion:       CompletionNone,
+		SourceBinaryPath: source,
+	})
+	if err != nil {
+		t.Fatalf("2nd Apply failed: %v", err)
+	}
+	if second.PathEntryAdded == "" {
+		t.Fatalf("expected path ownership to persist on second apply")
+	}
+
+	state, found, err := LoadState(second.StatePath)
+	if err != nil || !found {
+		t.Fatalf("expected state after second apply (found=%v, err=%v)", found, err)
+	}
+	if normalizePathForCompare(state.PathEntryAdded) != normalizePathForCompare(binDir) {
+		t.Fatalf("expected state path entry to match bin dir, got %q", state.PathEntryAdded)
+	}
+
+	_, err = Undo()
+	if err != nil {
+		t.Fatalf("Undo failed: %v", err)
+	}
+	if PathContainsDir(userPath, binDir) {
+		t.Fatalf("expected undo to remove bin dir from user PATH, got %q", userPath)
+	}
+}

@@ -40,12 +40,22 @@ func Apply(input ApplyInput) (ApplyResult, error) {
 	source = filepath.Clean(source)
 
 	target := ResolveTargetBinaryPath(binDir)
+	statePath, err := DefaultStatePath()
+	if err != nil {
+		return ApplyResult{}, err
+	}
+	prevState, prevFound, err := LoadState(statePath)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+
 	res := ApplyResult{
 		OS:               runtime.GOOS,
 		Scope:            input.Scope,
 		SourceBinaryPath: source,
 		TargetBinDir:     binDir,
 		InstalledBinPath: target,
+		StatePath:        statePath,
 		Actions:          make([]string, 0, 8),
 		Notes:            make([]string, 0, 4),
 	}
@@ -122,11 +132,8 @@ func Apply(input ApplyInput) (ApplyResult, error) {
 		}
 	}
 
-	statePath, err := DefaultStatePath()
-	if err != nil {
-		return res, err
-	}
-	res.StatePath = statePath
+	preserveSetupPathOwnership(&res, prevState, prevFound, target)
+
 	state := StateFile{
 		SchemaVersion:    StateSchemaVersion,
 		CreatedDirs:      append([]string(nil), res.CreatedDirs...),
@@ -144,6 +151,21 @@ func Apply(input ApplyInput) (ApplyResult, error) {
 		res.Notes = append(res.Notes, "Restart terminal and run `infratrack setup apply` again to complete binary swap.")
 	}
 	return res, nil
+}
+
+func preserveSetupPathOwnership(res *ApplyResult, prev StateFile, prevFound bool, target string) {
+	if !prevFound {
+		return
+	}
+	if normalizePathForCompare(prev.InstalledBinPath) != normalizePathForCompare(target) {
+		return
+	}
+	if res.PathEntryAdded == "" {
+		res.PathEntryAdded = prev.PathEntryAdded
+	}
+	if len(res.FilesTouched) == 0 && len(prev.FilesTouched) > 0 {
+		res.FilesTouched = append([]TouchedFile(nil), prev.FilesTouched...)
+	}
 }
 
 func windowsStagingPath(target string) string {
