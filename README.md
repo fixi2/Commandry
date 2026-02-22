@@ -16,6 +16,13 @@ Setup commands:
 - `infratrack setup apply` - non-interactive/direct apply
 - `infratrack setup undo` - revert setup changes recorded in setup state
 
+Updating from a GitHub-downloaded binary (important):
+- `setup` installs the currently running executable. To update, run setup from the new downloaded file path first.
+- Windows (PowerShell/CMD): `.\infratrack.exe setup apply --yes`
+- Linux: `./infratrack setup apply --yes`
+- macOS: `./infratrack setup apply --yes`
+- Then open a new terminal and verify with `infratrack version`.
+
 Notes:
 - restart terminal after PATH updates
 - `winget` flow is intentionally not primary before `v1.0.0`
