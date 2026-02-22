@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -146,10 +147,22 @@ func readFile(t *testing.T, path string) string {
 func normalizeRunbook(s string) string {
 	lines := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
 	out := make([]string, 0, len(lines))
+	stepTitleRE := regexp.MustCompile(`^\d+\. \[(OK|FAILED|REDACTED|UNKNOWN)\] .+$`)
 	for _, line := range lines {
 		if strings.HasPrefix(line, "Duration: ") {
 			out = append(out, "Duration: <normalized> ms")
 			continue
+		}
+		if strings.HasPrefix(line, "Total duration: ") {
+			out = append(out, "Total duration: <normalized> ms")
+			continue
+		}
+		if stepTitleRE.MatchString(line) {
+			parts := strings.SplitN(line, "] ", 2)
+			if len(parts) == 2 {
+				out = append(out, parts[0]+"] <normalized-command>")
+				continue
+			}
 		}
 		if strings.Contains(line, "echo hello") {
 			out = append(out, "<normalized-command>")

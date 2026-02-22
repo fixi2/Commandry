@@ -3,6 +3,8 @@
 ## Summary
 This runbook was generated from an explicit InfraTrack session.
 Recorded 2 step(s).
+Results: OK 2 | FAILED 0 | REDACTED 0
+Total duration: 2270 ms
 
 ## Preconditions
 - Suggested: `kubectl` is installed and available in PATH.
@@ -10,7 +12,7 @@ Recorded 2 step(s).
 - Suggested: Confirm no secrets are needed in commands.
 
 ## Steps
-1. Execute command
+1. [OK] kubectl apply -f deploy.yaml
 
 ```sh
 kubectl apply -f deploy.yaml
@@ -19,7 +21,7 @@ Result: OK
 Exit code: 0
 Duration: 820 ms
 
-2. Execute command
+2. [OK] kubectl rollout status deploy/api
 
 ```sh
 kubectl rollout status deploy/api

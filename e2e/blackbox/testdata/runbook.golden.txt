@@ -3,13 +3,15 @@
 ## Summary
 This runbook was generated from an explicit InfraTrack session.
 Recorded 1 step(s).
+Results: OK 1 | FAILED 0 | REDACTED 0
+Total duration: <normalized> ms
 
 ## Preconditions
 - TODO: Verify required tools and access are available.
 - TODO: Confirm no secrets are needed in commands.
 
 ## Steps
-1. Execute command
+1. [OK] <normalized-command>
 
 ```sh
 <normalized-command>
