@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/fixi2/InfraTrack/internal/textblock"
 	"github.com/spf13/cobra"
 )
 
@@ -192,72 +193,30 @@ func hooksHomeDir() (string, error) {
 
 func upsertPowerShellHookBlock(content, executablePath string) (string, bool, error) {
 	block := powerShellHookBlock(executablePath)
-	if strings.Contains(content, psHookBeginMarker) && strings.Contains(content, psHookEndMarker) {
-		start := strings.Index(content, psHookBeginMarker)
-		finish := strings.Index(content, psHookEndMarker)
-		if start == -1 || finish == -1 || finish < start {
-			return "", false, errors.New("hook block markers are malformed")
-		}
-		afterEnd := finish + len(psHookEndMarker)
-		existing := content[start:afterEnd]
-		if existing == block {
-			return content, false, nil
-		}
-		updated := content[:start] + block + content[afterEnd:]
-		return updated, true, nil
+	updated, changed, err := textblock.Upsert(content, psHookBeginMarker, psHookEndMarker, block)
+	if err != nil {
+		return "", false, errors.New("hook block markers are malformed")
 	}
-
-	if content == "" {
-		return block + "\n", true, nil
-	}
-	if !strings.HasSuffix(content, "\n") {
-		content += "\n"
-	}
-	return content + "\n" + block + "\n", true, nil
+	return updated, changed, nil
 }
 
 func removePowerShellHookBlock(content string) (string, bool, error) {
-	return replaceBetweenMarkers(content, psHookBeginMarker, psHookEndMarker, "")
+	updated, changed, err := textblock.Remove(content, psHookBeginMarker, psHookEndMarker)
+	if err != nil {
+		return "", false, errors.New("hook block markers are malformed")
+	}
+	return updated, changed, nil
 }
 
 func replaceBetweenMarkers(content, begin, end, replacement string) (string, bool, error) {
-	start := strings.Index(content, begin)
-	finish := strings.Index(content, end)
-	if start == -1 && finish == -1 {
-		return content, false, nil
+	if replacement != "" {
+		return "", false, errors.New("replacement mode is not supported")
 	}
-	if start == -1 || finish == -1 || finish < start {
+	updated, changed, err := textblock.Remove(content, begin, end)
+	if err != nil {
 		return "", false, errors.New("hook block markers are malformed")
 	}
-	afterEnd := finish + len(end)
-	left := content[:start]
-	right := content[afterEnd:]
-
-	if strings.HasPrefix(right, "\r\n") {
-		right = strings.TrimPrefix(right, "\r\n")
-	} else if strings.HasPrefix(right, "\n") {
-		right = strings.TrimPrefix(right, "\n")
-	}
-	if replacement == "" {
-		updated := strings.TrimRight(left, "\r\n")
-		if right != "" {
-			if updated != "" {
-				updated += "\n"
-			}
-			updated += strings.TrimLeft(right, "\r\n")
-		}
-		return updated, true, nil
-	}
-
-	updated := strings.TrimRight(left, "\r\n")
-	if updated != "" {
-		updated += "\n\n"
-	}
-	updated += replacement
-	if right != "" {
-		updated += "\n\n" + strings.TrimLeft(right, "\r\n")
-	}
-	return updated, updated != content, nil
+	return updated, changed, nil
 }
 
 func readTextFile(path string) (string, error) {
@@ -297,7 +256,9 @@ func powerShellHookBlock(executablePath string) string {
 		"  $infraTrackHist = Get-History -Count 1 -ErrorAction SilentlyContinue",
 		"  if ($infraTrackHist -and $infraTrackHist.Id -ne $global:InfraTrackLastHistoryId) {",
 		"    $global:InfraTrackLastHistoryId = $infraTrackHist.Id",
-		fmt.Sprintf("    & '%s' hook record --command $infraTrackHist.CommandLine --exit-code $infraTrackExit --duration-ms 0 --cwd $infraTrackCwd 2>$null", escapedPath),
+		"    if ($infraTrackHist.CommandLine -notmatch '^\\s*(infratrack(\\.exe)?|it)\\b') {",
+		fmt.Sprintf("      & '%s' hook record --command $infraTrackHist.CommandLine --exit-code $infraTrackExit --duration-ms 0 --cwd $infraTrackCwd 2>$null", escapedPath),
+		"    }",
 		"  }",
 		"  $infraTrackPrefix = \"\"",
 		"  try {",

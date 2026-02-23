@@ -80,4 +80,43 @@ func TestHookBlocksUseAbsolutePath(t *testing.T) {
 	if !strings.Contains(zshBlock, "'/usr/local/bin/infratrack' hook record") {
 		t.Fatalf("expected absolute path in zsh block: %s", zshBlock)
 	}
+	if !strings.Contains(bashBlock, "__infratrack_should_prefix") {
+		t.Fatalf("expected conditional REC helper in bash block: %s", bashBlock)
+	}
+	if !strings.Contains(zshBlock, "__infratrack_should_prefix") {
+		t.Fatalf("expected conditional REC helper in zsh block: %s", zshBlock)
+	}
+	if !strings.Contains(bashBlock, "trap '__infratrack_preexec' DEBUG") {
+		t.Fatalf("expected bash DEBUG trap preexec hook: %s", bashBlock)
+	}
+	if !strings.Contains(zshBlock, "add-zsh-hook preexec __infratrack_preexec") {
+		t.Fatalf("expected zsh preexec hook: %s", zshBlock)
+	}
+	if !strings.Contains(bashBlock, "__infratrack_hook_ready=1") {
+		t.Fatalf("expected bash block to enable ready flag after init: %s", bashBlock)
+	}
+	if !strings.Contains(zshBlock, "__infratrack_hook_ready=1") {
+		t.Fatalf("expected zsh block to enable ready flag after init: %s", zshBlock)
+	}
+	if !strings.Contains(bashBlock, "\"exit\"") {
+		t.Fatalf("expected bash block to ignore exit command: %s", bashBlock)
+	}
+	if !strings.Contains(zshBlock, "\"exit\"") {
+		t.Fatalf("expected zsh block to ignore exit command: %s", zshBlock)
+	}
+	if !strings.Contains(bashBlock, "PS1=\"${PS1#\\[REC\\] }\"") {
+		t.Fatalf("expected bash block to remove REC prefix when inactive: %s", bashBlock)
+	}
+	if !strings.Contains(zshBlock, "PROMPT=\"${PROMPT#\\[REC\\] }\"") {
+		t.Fatalf("expected zsh block to remove REC prefix when inactive: %s", zshBlock)
+	}
+}
+
+func TestUpsertHookBlockMalformedMarkers(t *testing.T) {
+	t.Parallel()
+	content := bashHookEndMarker + "\n" + bashHookBeginMarker + "\n"
+	_, _, err := upsertHookBlock(content, bashHookBeginMarker, bashHookEndMarker, bashHookBlock("/usr/local/bin/infratrack"))
+	if err == nil {
+		t.Fatal("expected malformed markers error")
+	}
 }

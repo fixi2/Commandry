@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fixi2/InfraTrack/internal/textblock"
 	"github.com/spf13/cobra"
 )
 
@@ -127,28 +128,11 @@ func uninstallPosixHook(cmd *cobra.Command, path, begin, end string) error {
 }
 
 func upsertHookBlock(content, begin, end, block string) (string, bool, error) {
-	if strings.Contains(content, begin) && strings.Contains(content, end) {
-		start := strings.Index(content, begin)
-		finish := strings.Index(content, end)
-		if start == -1 || finish == -1 || finish < start {
-			return "", false, errors.New("hook block markers are malformed")
-		}
-		afterEnd := finish + len(end)
-		existing := content[start:afterEnd]
-		if existing == block {
-			return content, false, nil
-		}
-		updated := content[:start] + block + content[afterEnd:]
-		return updated, true, nil
+	updated, changed, err := textblock.Upsert(content, begin, end, block)
+	if err != nil {
+		return "", false, errors.New("hook block markers are malformed")
 	}
-
-	if content == "" {
-		return block + "\n", true, nil
-	}
-	if !strings.HasSuffix(content, "\n") {
-		content += "\n"
-	}
-	return content + "\n" + block + "\n", true, nil
+	return updated, changed, nil
 }
 
 func bashProfilePath() (string, error) {
@@ -210,11 +194,41 @@ func bashHookBlock(executablePath string) string {
 	return strings.Join([]string{
 		bashHookBeginMarker,
 		"__infratrack_hook_active=0",
+		"__infratrack_hook_ready=0",
+		"__infratrack_should_prefix() {",
+		"  local __it_root",
+		"  if [ -n \"${APPDATA:-}\" ]; then",
+		"    __it_root=\"$APPDATA/infratrack\"",
+		"  elif [ -n \"${XDG_CONFIG_HOME:-}\" ]; then",
+		"    __it_root=\"$XDG_CONFIG_HOME/infratrack\"",
+		"  elif [ \"$(uname -s 2>/dev/null)\" = \"Darwin\" ]; then",
+		"    __it_root=\"$HOME/Library/Application Support/infratrack\"",
+		"  else",
+		"    __it_root=\"$HOME/.config/infratrack\"",
+		"  fi",
+		"  local __it_state=\"$__it_root/hooks_state.json\"",
+		"  local __it_active=\"$__it_root/active_session.json\"",
+		"  [ -f \"$__it_state\" ] || return 1",
+		"  [ -f \"$__it_active\" ] || return 1",
+		"  grep -qi '\"enabled\"[[:space:]]*:[[:space:]]*true' \"$__it_state\" 2>/dev/null",
+		"}",
+		"__infratrack_apply_ps1_prefix() {",
+		"  [ -n \"${PS1:-}\" ] || return",
+		"  if __infratrack_should_prefix; then",
+		"    case \"$PS1\" in",
+		"      \"[REC] \"*) ;;",
+		"      *) PS1=\"[REC] $PS1\" ;;",
+		"    esac",
+		"  else",
+		"    case \"$PS1\" in",
+		"      \"[REC] \"*) PS1=\"${PS1#\\[REC\\] }\" ;;",
+		"    esac",
+		"  fi",
+		"}",
 		"__infratrack_hook_record() {",
 		"  local __it_exit=$?",
 		"  if [ \"${__infratrack_hook_active}\" = \"1\" ]; then return; fi",
-		"  local __it_cmd",
-		"  __it_cmd=$(history 1 | sed 's/^[ ]*[0-9]\\+[ ]*//')",
+		"  local __it_cmd=\"$1\"",
 		"  [ -z \"$__it_cmd\" ] && return",
 		"  case \"$__it_cmd\" in",
 		"    infratrack*|it*) return ;;",
@@ -222,21 +236,27 @@ func bashHookBlock(executablePath string) string {
 		"  __infratrack_hook_active=1",
 		fmt.Sprintf("  '%s' hook record --command \"$__it_cmd\" --exit-code \"$__it_exit\" --duration-ms 0 --cwd \"$PWD\" >/dev/null 2>&1 || true", exe),
 		"  __infratrack_hook_active=0",
+		"  __infratrack_apply_ps1_prefix",
 		"}",
+		"__infratrack_preexec() {",
+		"  [ \"${__infratrack_hook_ready}\" = \"1\" ] || return",
+		"  local __it_cmd=\"$BASH_COMMAND\"",
+		"  case \"$__it_cmd\" in",
+		"    __infratrack_*|history*|trap*|PROMPT_COMMAND*|\"[ \"*|\"exit\"|\"logout\"|\"\") return ;;",
+		"  esac",
+		"  __infratrack_hook_record \"$__it_cmd\"",
+		"}",
+		"trap '__infratrack_preexec' DEBUG",
 		"if [ -n \"${PROMPT_COMMAND:-}\" ]; then",
 		"  case \";$PROMPT_COMMAND;\" in",
-		"    *\";__infratrack_hook_record;\"*) ;;",
-		"    *) PROMPT_COMMAND=\"__infratrack_hook_record; $PROMPT_COMMAND\" ;;",
+		"    *\";__infratrack_apply_ps1_prefix;\"*) ;;",
+		"    *) PROMPT_COMMAND=\"__infratrack_apply_ps1_prefix; $PROMPT_COMMAND\" ;;",
 		"  esac",
 		"else",
-		"  PROMPT_COMMAND=\"__infratrack_hook_record\"",
+		"  PROMPT_COMMAND=\"__infratrack_apply_ps1_prefix\"",
 		"fi",
-		"if [ -n \"${PS1:-}\" ]; then",
-		"  case \"$PS1\" in",
-		"    \"[REC] \"*) ;;",
-		"    *) PS1=\"[REC] $PS1\" ;;",
-		"  esac",
-		"fi",
+		"__infratrack_hook_ready=1",
+		"__infratrack_apply_ps1_prefix",
 		bashHookEndMarker,
 	}, "\n")
 }
@@ -247,11 +267,41 @@ func zshHookBlock(executablePath string) string {
 		zshHookBeginMarker,
 		"autoload -Uz add-zsh-hook",
 		"typeset -g __infratrack_hook_active=0",
-		"__infratrack_precmd() {",
+		"typeset -g __infratrack_hook_ready=0",
+		"__infratrack_should_prefix() {",
+		"  local __it_root",
+		"  if [[ -n \"${APPDATA:-}\" ]]; then",
+		"    __it_root=\"$APPDATA/infratrack\"",
+		"  elif [[ -n \"${XDG_CONFIG_HOME:-}\" ]]; then",
+		"    __it_root=\"$XDG_CONFIG_HOME/infratrack\"",
+		"  elif [[ \"$(uname -s 2>/dev/null)\" == \"Darwin\" ]]; then",
+		"    __it_root=\"$HOME/Library/Application Support/infratrack\"",
+		"  else",
+		"    __it_root=\"$HOME/.config/infratrack\"",
+		"  fi",
+		"  local __it_state=\"$__it_root/hooks_state.json\"",
+		"  local __it_active=\"$__it_root/active_session.json\"",
+		"  [[ -f \"$__it_state\" ]] || return 1",
+		"  [[ -f \"$__it_active\" ]] || return 1",
+		"  grep -qi '\"enabled\"[[:space:]]*:[[:space:]]*true' \"$__it_state\" 2>/dev/null",
+		"}",
+		"__infratrack_apply_prompt_prefix() {",
+		"  [[ -n \"${PROMPT:-}\" ]] || return",
+		"  if __infratrack_should_prefix; then",
+		"    case \"$PROMPT\" in",
+		"      \"[REC] \"*) ;;",
+		"      *) PROMPT=\"[REC] $PROMPT\" ;;",
+		"    esac",
+		"  else",
+		"    case \"$PROMPT\" in",
+		"      \"[REC] \"*) PROMPT=\"${PROMPT#\\[REC\\] }\" ;;",
+		"    esac",
+		"  fi",
+		"}",
+		"__infratrack_hook_record() {",
 		"  local __it_exit=$?",
 		"  if [[ \"$__infratrack_hook_active\" == \"1\" ]]; then return; fi",
-		"  local __it_cmd",
-		"  __it_cmd=$(fc -ln -1)",
+		"  local __it_cmd=\"$1\"",
 		"  [[ -z \"$__it_cmd\" ]] && return",
 		"  case \"$__it_cmd\" in",
 		"    infratrack*|it*) return ;;",
@@ -260,13 +310,21 @@ func zshHookBlock(executablePath string) string {
 		fmt.Sprintf("  '%s' hook record --command \"$__it_cmd\" --exit-code \"$__it_exit\" --duration-ms 0 --cwd \"$PWD\" >/dev/null 2>&1 || true", exe),
 		"  __infratrack_hook_active=0",
 		"}",
-		"add-zsh-hook precmd __infratrack_precmd",
-		"if [[ -n \"${PROMPT:-}\" ]]; then",
-		"  case \"$PROMPT\" in",
-		"    \"[REC] \"*) ;;",
-		"    *) PROMPT=\"[REC] $PROMPT\" ;;",
+		"__infratrack_preexec() {",
+		"  [[ \"$__infratrack_hook_ready\" == \"1\" ]] || return",
+		"  local __it_cmd=\"$1\"",
+		"  case \"$__it_cmd\" in",
+		"    __infratrack_*|\"[ \"*|\"exit\"|\"logout\"|\"\") return ;;",
 		"  esac",
-		"fi",
+		"  __infratrack_hook_record \"$__it_cmd\"",
+		"}",
+		"__infratrack_precmd() {",
+		"  __infratrack_apply_prompt_prefix",
+		"}",
+		"add-zsh-hook preexec __infratrack_preexec",
+		"add-zsh-hook precmd __infratrack_precmd",
+		"__infratrack_hook_ready=1",
+		"__infratrack_apply_prompt_prefix",
 		zshHookEndMarker,
 	}, "\n")
 }

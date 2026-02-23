@@ -132,6 +132,21 @@ func TestRecorderSkipsInfraTrackCommand(t *testing.T) {
 	if result.SkippedReason != "self_command" {
 		t.Fatalf("unexpected skip reason: %s", result.SkippedReason)
 	}
+
+	resultAlias, err := rec.Record(ctx, RecordInput{
+		Command:    "it status",
+		ExitCode:   0,
+		DurationMS: 5,
+	})
+	if err != nil {
+		t.Fatalf("record alias self command: %v", err)
+	}
+	if resultAlias.Recorded {
+		t.Fatalf("expected alias self command to be skipped")
+	}
+	if resultAlias.SkippedReason != "self_command" {
+		t.Fatalf("unexpected alias skip reason: %s", resultAlias.SkippedReason)
+	}
 }
 
 func TestRecorderAppliesPolicy(t *testing.T) {
