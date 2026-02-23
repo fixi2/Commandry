@@ -40,6 +40,13 @@ func TestPolicyApply(t *testing.T) {
 			contains: "Authorization: Bearer [REDACTED]",
 		},
 		{
+			name:     "redact uri userinfo",
+			raw:      "curl https://alice:supersecret@example.com/api",
+			args:     []string{"curl"},
+			denied:   false,
+			contains: "https://[REDACTED]:[REDACTED]@example.com/api",
+		},
+		{
 			name:     "redact long options",
 			raw:      "deploy --token=abc --password hunter2",
 			args:     []string{"deploy"},

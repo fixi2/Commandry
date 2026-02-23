@@ -6,7 +6,7 @@ type Step struct {
 	Timestamp  time.Time `json:"timestamp"`
 	Command    string    `json:"command"`
 	Status     string    `json:"status,omitempty"` // OK, FAILED, REDACTED
-	Reason     string    `json:"reason,omitempty"` // nonzero_exit, command_not_found, start_failed, policy_redacted, unknown
+	Reason     string    `json:"reason,omitempty"` // nonzero_exit, command_not_found, start_failed, policy_redacted, policy_blocked, unknown
 	ExitCode   *int      `json:"exit_code,omitempty"`
 	DurationMS int64     `json:"duration_ms"`
 	CWD        string    `json:"cwd,omitempty"`

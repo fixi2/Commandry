@@ -16,6 +16,7 @@ This document defines user-visible CLI behavior that tests must enforce without 
 ## C3. Security / Policy Contract
 - Sentinel secrets must not appear in exported runbooks.
 - Denylisted commands are represented as policy-redacted text (`[REDACTED BY POLICY]` contract token).
+- If `policy.enforce_denylist: true` is set in `config.yaml`, denylisted commands are blocked before execution in `infratrack run`.
 - Raw command stdout/stderr payload is not persisted into runbook command content.
 
 ## C4. Export Contract

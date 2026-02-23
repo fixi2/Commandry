@@ -2,6 +2,9 @@ package cli
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -212,4 +215,88 @@ func TestNoColorFlagAccepted(t *testing.T) {
 	if !strings.Contains(out.String(), "InfraTrack") {
 		t.Fatalf("unexpected output: %s", out.String())
 	}
+}
+
+func TestRunBlockedByEnforcedDenylist(t *testing.T) {
+	rootBase := t.TempDir()
+	appData := filepath.Join(rootBase, "appdata")
+	home := filepath.Join(rootBase, "home")
+	if err := os.MkdirAll(appData, 0o755); err != nil {
+		t.Fatalf("mkdir appdata: %v", err)
+	}
+	if err := os.MkdirAll(home, 0o755); err != nil {
+		t.Fatalf("mkdir home: %v", err)
+	}
+	t.Setenv("APPDATA", appData)
+	t.Setenv("XDG_CONFIG_HOME", appData)
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	root, err := NewRootCommand()
+	if err != nil {
+		t.Fatalf("NewRootCommand failed: %v", err)
+	}
+	root.SetArgs([]string{"init"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	cfgPath := filepath.Join(appData, "infratrack", "config.yaml")
+	cfg := strings.Join([]string{
+		"policy:",
+		"  denylist:",
+		"    - \"echo blocked\"",
+		"  redaction_keywords:",
+		"    - token",
+		"  enforce_denylist: true",
+		"capture:",
+		"  include_stdout: false",
+		"  include_stderr: false",
+		"",
+	}, "\n")
+	if err := os.WriteFile(cfgPath, []byte(cfg), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	runRoot, err := NewRootCommand()
+	if err != nil {
+		t.Fatalf("NewRootCommand failed: %v", err)
+	}
+	runRoot.SetArgs([]string{"start", "denylist-enforced"})
+	if err := runRoot.Execute(); err != nil {
+		t.Fatalf("start failed: %v", err)
+	}
+
+	runRoot, err = NewRootCommand()
+	if err != nil {
+		t.Fatalf("NewRootCommand failed: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		runRoot.SetArgs([]string{"run", "--", "cmd", "/c", "echo blocked"})
+	} else {
+		runRoot.SetArgs([]string{"run", "--", "sh", "-lc", "echo blocked"})
+	}
+	err = runRoot.Execute()
+	var exitErr *ExitError
+	if err == nil || !asExitErrorCLI(err, &exitErr) || exitErr.Code != 2 {
+		t.Fatalf("expected ExitError code 2, got err=%v", err)
+	}
+
+	stopRoot, err := NewRootCommand()
+	if err != nil {
+		t.Fatalf("NewRootCommand failed: %v", err)
+	}
+	stopRoot.SetArgs([]string{"stop"})
+	if err := stopRoot.Execute(); err != nil {
+		t.Fatalf("stop failed: %v", err)
+	}
+}
+
+func asExitErrorCLI(err error, target **ExitError) bool {
+	e, ok := err.(*ExitError)
+	if !ok {
+		return false
+	}
+	*target = e
+	return true
 }
