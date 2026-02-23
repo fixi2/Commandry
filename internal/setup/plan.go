@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 func BuildPlan(input PlanInput) (Plan, error) {
@@ -97,7 +98,11 @@ func BuildStatus(scope Scope, binDir string) (Status, error) {
 	pathValue := os.Getenv("PATH")
 	if runtime.GOOS == "windows" {
 		if userPath, readErr := readWindowsUserPathFn(); readErr == nil {
-			pathValue = userPath
+			if strings.TrimSpace(pathValue) == "" {
+				pathValue = userPath
+			} else if strings.TrimSpace(userPath) != "" {
+				pathValue = userPath + string(os.PathListSeparator) + pathValue
+			}
 		}
 	}
 

@@ -89,3 +89,10 @@ func normalizePathForCompare(v string) string {
 	}
 	return s
 }
+
+func validatePathNoControlChars(v string) error {
+	if strings.Contains(v, "\x00") || strings.Contains(v, "\n") || strings.Contains(v, "\r") {
+		return fmt.Errorf("path contains unsupported control characters")
+	}
+	return nil
+}

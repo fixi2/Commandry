@@ -114,6 +114,36 @@ func TestUndoRemovesPosixMarkerBlockFromTouchedFile(t *testing.T) {
 	}
 }
 
+func TestUndoFailsOnMalformedSetupMarkerBlock(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", root)
+	t.Setenv("APPDATA", root)
+
+	profile := filepath.Join(root, ".profile")
+	// End marker exists without begin marker.
+	if err := os.WriteFile(profile, []byte(setupPathEndMarker+"\n"), 0o600); err != nil {
+		t.Fatalf("write profile: %v", err)
+	}
+
+	statePath, err := DefaultStatePath()
+	if err != nil {
+		t.Fatalf("DefaultStatePath failed: %v", err)
+	}
+	err = SaveState(statePath, StateFile{
+		SchemaVersion:  StateSchemaVersion,
+		FilesTouched:   []TouchedFile{{Path: profile, Marker: setupPathBeginMarker}},
+		PathEntryAdded: "/tmp/bin",
+		Timestamp:      time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("SaveState failed: %v", err)
+	}
+
+	if _, err := Undo(); err == nil {
+		t.Fatal("expected undo to fail on malformed setup marker block")
+	}
+}
+
 func TestUndoWindowsPathEntryRemoval(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("windows-only")

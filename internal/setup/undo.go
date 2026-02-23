@@ -135,6 +135,10 @@ func undoPosixPathEntry(_ string) (bool, string, error) {
 }
 
 func removeMarkerBlock(path, beginMarker, endMarker string) (bool, error) {
+	if beginMarker == setupPathBeginMarker && endMarker == setupPathEndMarker {
+		return removeSetupPathMarkerBlock(path)
+	}
+
 	content, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -154,6 +158,32 @@ func removeMarkerBlock(path, beginMarker, endMarker string) (bool, error) {
 	end = begin + end + len(endMarker)
 	for end < len(text) && (text[end] == '\r' || text[end] == '\n') {
 		end++
+	}
+	next := strings.TrimRight(text[:begin]+text[end:], "\r\n")
+	if next != "" {
+		next += "\n"
+	}
+	if err := os.WriteFile(path, []byte(next), 0o600); err != nil {
+		return false, fmt.Errorf("write profile %s: %w", path, err)
+	}
+	return true, nil
+}
+
+func removeSetupPathMarkerBlock(path string) (bool, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("read profile %s: %w", path, err)
+	}
+	text := string(content)
+	begin, end, exists, err := findSetupMarkerSpan(text)
+	if err != nil {
+		return false, fmt.Errorf("read profile %s: %w", path, err)
+	}
+	if !exists {
+		return false, nil
 	}
 	next := strings.TrimRight(text[:begin]+text[end:], "\r\n")
 	if next != "" {

@@ -51,6 +51,31 @@ func TestApplyWindowsStagingName(t *testing.T) {
 	}
 }
 
+func TestApplyRejectsControlCharsInBinDir(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", root)
+	t.Setenv("APPDATA", filepath.Join(root, "AppData", "Roaming"))
+
+	source := filepath.Join(root, "source-bin")
+	if runtime.GOOS == "windows" {
+		source += ".exe"
+	}
+	if err := os.WriteFile(source, []byte("infratrack-binary"), 0o700); err != nil {
+		t.Fatalf("write source failed: %v", err)
+	}
+
+	_, err := Apply(ApplyInput{
+		Scope:            ScopeUser,
+		BinDir:           "/tmp/infratrack\nbin",
+		NoPath:           true,
+		Completion:       CompletionNone,
+		SourceBinaryPath: source,
+	})
+	if err == nil {
+		t.Fatal("expected apply to reject control characters in --bin-dir")
+	}
+}
+
 func TestApplyWindowsPreservesPathOwnershipAcrossIdempotentApply(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("windows-only")
@@ -122,5 +147,47 @@ func TestApplyWindowsPreservesPathOwnershipAcrossIdempotentApply(t *testing.T) {
 	}
 	if PathContainsDir(userPath, binDir) {
 		t.Fatalf("expected undo to remove bin dir from user PATH, got %q", userPath)
+	}
+}
+
+func TestFinalizeWindowsBinaryRollsBackOnActivationFailure(t *testing.T) {
+	target := `C:\bin\infratrack.exe`
+	staging := `C:\bin\infratrack.new.exe`
+	backup := target + ".bak"
+
+	origRename := osRenameFn
+	origRemove := osRemoveFn
+	defer func() {
+		osRenameFn = origRename
+		osRemoveFn = origRemove
+	}()
+
+	osRemoveFn = func(string) error { return nil }
+	renamedToBackup := false
+	rolledBack := false
+	osRenameFn = func(oldPath, newPath string) error {
+		if oldPath == target && newPath == backup {
+			renamedToBackup = true
+			return nil
+		}
+		if oldPath == staging && newPath == target {
+			return os.ErrNotExist
+		}
+		if oldPath == backup && newPath == target {
+			rolledBack = true
+			return nil
+		}
+		return nil
+	}
+
+	_, _, err := finalizeWindowsBinary(staging, target)
+	if err == nil {
+		t.Fatal("expected finalizeWindowsBinary to fail")
+	}
+	if !renamedToBackup {
+		t.Fatal("expected existing target to be moved to backup before activation")
+	}
+	if !rolledBack {
+		t.Fatal("expected rollback rename from backup to target")
 	}
 }

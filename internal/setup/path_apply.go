@@ -2,6 +2,7 @@ package setup
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -77,27 +78,31 @@ func buildWindowsUserPathValue(current, binDir string) string {
 }
 
 func ensurePosixUserPathConfigured(binDir string) (pathApplyResult, error) {
+	escapedBinDir, err := quotePOSIXSingle(binDir)
+	if err != nil {
+		return pathApplyResult{}, err
+	}
+
 	profile, err := resolvePosixProfileFn()
 	if err != nil {
 		return pathApplyResult{}, err
 	}
 	content, _ := os.ReadFile(profile)
 	text := string(content)
-	if strings.Contains(text, setupPathBeginMarker) && strings.Contains(text, setupPathEndMarker) {
-		return pathApplyResult{
-			Action: "PATH already configured (no change).",
-		}, nil
+
+	block := fmt.Sprintf("%s\nexport PATH=%s:\"$PATH\"\n%s\n", setupPathBeginMarker, escapedBinDir, setupPathEndMarker)
+	updated, changed, err := upsertSetupMarkerBlock(text, block)
+	if err != nil {
+		return pathApplyResult{}, fmt.Errorf("prepare profile marker block: %w", err)
 	}
-	block := fmt.Sprintf("%s\nexport PATH=\"%s:$PATH\"\n%s\n", setupPathBeginMarker, binDir, setupPathEndMarker)
-	if strings.TrimSpace(text) == "" {
-		text = block
-	} else {
-		text = strings.TrimRight(text, "\r\n") + "\n\n" + block
+	if !changed {
+		return pathApplyResult{Action: "PATH already configured (no change)."}, nil
 	}
+
 	if err := os.MkdirAll(filepath.Dir(profile), 0o755); err != nil {
 		return pathApplyResult{}, fmt.Errorf("create profile dir: %w", err)
 	}
-	if err := os.WriteFile(profile, []byte(text), 0o600); err != nil {
+	if err := os.WriteFile(profile, []byte(updated), 0o600); err != nil {
 		return pathApplyResult{}, fmt.Errorf("write profile: %w", err)
 	}
 	return pathApplyResult{
@@ -129,15 +134,24 @@ func readWindowsUserPath() (string, error) {
 }
 
 func writeWindowsUserPath(pathValue string) error {
-	script := fmt.Sprintf("[Environment]::SetEnvironmentVariable('Path', \"%s\", 'User')", escapePowerShellDoubleQuoted(pathValue))
-	if _, err := runPowershell(script); err != nil {
-		return fmt.Errorf("write user PATH: %w", err)
+	cmd := exec.Command(powershellExePath(), "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "[Environment]::SetEnvironmentVariable('Path', $env:INFRATRACK_PATH_VALUE, 'User')")
+	cmd.Env = append(os.Environ(), "INFRATRACK_PATH_VALUE="+pathValue)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return fmt.Errorf("write user PATH: %s", msg)
 	}
 	return nil
 }
 
 func runPowershell(script string) (string, error) {
-	cmd := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script)
+	cmd := exec.Command(powershellExePath(), "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -152,8 +166,61 @@ func runPowershell(script string) (string, error) {
 	return stdout.String(), nil
 }
 
-func escapePowerShellDoubleQuoted(v string) string {
-	v = strings.ReplaceAll(v, "`", "``")
-	v = strings.ReplaceAll(v, "\"", "`\"")
-	return v
+func powershellExePath() string {
+	systemRoot := strings.TrimSpace(os.Getenv("SystemRoot"))
+	if systemRoot == "" {
+		systemRoot = `C:\Windows`
+	}
+	return filepath.Join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+}
+
+func quotePOSIXSingle(v string) (string, error) {
+	if strings.Contains(v, "\x00") || strings.Contains(v, "\n") || strings.Contains(v, "\r") {
+		return "", errors.New("bin-dir contains unsupported control characters")
+	}
+	escaped := strings.ReplaceAll(v, `'`, `'\''`)
+	return "'" + escaped + "'", nil
+}
+
+func upsertSetupMarkerBlock(content, block string) (string, bool, error) {
+	begin, end, exists, err := findSetupMarkerSpan(content)
+	if err != nil {
+		return "", false, err
+	}
+	if exists {
+		current := content[begin:end]
+		if normalizeLineEndings(current) == normalizeLineEndings(block) {
+			return content, false, nil
+		}
+		out := content[:begin] + block + content[end:]
+		return out, true, nil
+	}
+	if strings.TrimSpace(content) == "" {
+		return block, true, nil
+	}
+	return strings.TrimRight(content, "\r\n") + "\n\n" + block, true, nil
+}
+
+func findSetupMarkerSpan(content string) (int, int, bool, error) {
+	begin := strings.Index(content, setupPathBeginMarker)
+	end := strings.Index(content, setupPathEndMarker)
+	if begin < 0 && end < 0 {
+		return 0, 0, false, nil
+	}
+	if begin < 0 || end < 0 || end < begin {
+		return 0, 0, false, errors.New("setup marker block is malformed")
+	}
+	nextBegin := strings.Index(content[begin+len(setupPathBeginMarker):], setupPathBeginMarker)
+	if nextBegin >= 0 {
+		return 0, 0, false, errors.New("multiple setup marker blocks found")
+	}
+	end += len(setupPathEndMarker)
+	for end < len(content) && (content[end] == '\r' || content[end] == '\n') {
+		end++
+	}
+	return begin, end, true, nil
+}
+
+func normalizeLineEndings(v string) string {
+	return strings.ReplaceAll(v, "\r\n", "\n")
 }

@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+var (
+	osRemoveFn = os.Remove
+	osRenameFn = os.Rename
+)
+
 func Apply(input ApplyInput) (ApplyResult, error) {
 	if input.Scope == "" {
 		input.Scope = ScopeUser
@@ -26,6 +31,9 @@ func Apply(input ApplyInput) (ApplyResult, error) {
 		if err != nil {
 			return ApplyResult{}, err
 		}
+	}
+	if err := validatePathNoControlChars(binDir); err != nil {
+		return ApplyResult{}, fmt.Errorf("invalid --bin-dir: %w", err)
 	}
 	binDir = filepath.Clean(binDir)
 
@@ -98,10 +106,7 @@ func Apply(input ApplyInput) (ApplyResult, error) {
 			if err := copyFile(source, staging, 0o700); err != nil {
 				return res, fmt.Errorf("copy binary to staging: %w", err)
 			}
-			if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) {
-				return res, fmt.Errorf("replace target binary: %w", err)
-			}
-			if err := os.Rename(staging, target); err != nil {
+			if err := osRenameFn(staging, target); err != nil {
 				return res, fmt.Errorf("activate new binary: %w", err)
 			}
 			if err := os.Chmod(target, 0o755); err != nil {
@@ -176,18 +181,35 @@ func windowsStagingPath(target string) string {
 }
 
 func finalizeWindowsBinary(stagingPath, targetPath string) (bool, string, error) {
-	if err := os.Remove(targetPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+	backupPath := fmt.Sprintf("%s.bak", targetPath)
+	if err := osRemoveFn(backupPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return false, "", fmt.Errorf("prepare backup target: %w", err)
+	}
+
+	if err := osRenameFn(targetPath, backupPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			if err := osRenameFn(stagingPath, targetPath); err != nil {
+				if isFileLockError(err) {
+					return true, "Restart terminal to complete upgrade. Existing binary is in use.", nil
+				}
+				return false, "", fmt.Errorf("activate staged binary: %w", err)
+			}
+			return false, "", nil
+		}
 		if isFileLockError(err) {
 			return true, "Restart terminal to complete upgrade. Existing binary is in use.", nil
 		}
 		return false, "", fmt.Errorf("prepare target binary: %w", err)
 	}
-	if err := os.Rename(stagingPath, targetPath); err != nil {
+
+	if err := osRenameFn(stagingPath, targetPath); err != nil {
+		_ = osRenameFn(backupPath, targetPath)
 		if isFileLockError(err) {
 			return true, "Restart terminal to complete upgrade. Existing binary is in use.", nil
 		}
 		return false, "", fmt.Errorf("activate staged binary: %w", err)
 	}
+	_ = osRemoveFn(backupPath)
 	return false, "", nil
 }
 

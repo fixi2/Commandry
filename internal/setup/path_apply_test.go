@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -124,5 +125,68 @@ func TestEnsurePosixUserPathConfiguredUsesMarkerBlock(t *testing.T) {
 	}
 	if res2.Changed {
 		t.Fatalf("expected changed=false on second run")
+	}
+}
+
+func TestEnsurePosixUserPathConfiguredQuotesBinDir(t *testing.T) {
+	prevResolve := resolvePosixProfileFn
+	defer func() { resolvePosixProfileFn = prevResolve }()
+
+	profile := filepath.Join(t.TempDir(), ".profile")
+	resolvePosixProfileFn = func() (string, error) { return profile, nil }
+
+	binDir := "/tmp/infra track/it's-bin"
+	_, err := ensurePosixUserPathConfigured(binDir)
+	if err != nil {
+		t.Fatalf("ensurePosixUserPathConfigured failed: %v", err)
+	}
+
+	got, err := os.ReadFile(profile)
+	if err != nil {
+		t.Fatalf("read profile failed: %v", err)
+	}
+	text := string(got)
+	if !strings.Contains(text, "export PATH='/tmp/infra track/it'\\''s-bin':\"$PATH\"") {
+		t.Fatalf("expected quoted path in profile, got: %q", text)
+	}
+}
+
+func TestEnsurePosixUserPathConfiguredRejectsControlChars(t *testing.T) {
+	prevResolve := resolvePosixProfileFn
+	defer func() { resolvePosixProfileFn = prevResolve }()
+
+	profile := filepath.Join(t.TempDir(), ".profile")
+	resolvePosixProfileFn = func() (string, error) { return profile, nil }
+
+	if _, err := ensurePosixUserPathConfigured("/tmp/infratrack\nbin"); err == nil {
+		t.Fatal("expected control-char path to fail")
+	}
+}
+
+func TestEnsurePosixUserPathConfiguredMalformedMarkerFails(t *testing.T) {
+	prevResolve := resolvePosixProfileFn
+	defer func() { resolvePosixProfileFn = prevResolve }()
+
+	profile := filepath.Join(t.TempDir(), ".profile")
+	resolvePosixProfileFn = func() (string, error) { return profile, nil }
+	if err := os.WriteFile(profile, []byte(setupPathEndMarker+"\n"), 0o600); err != nil {
+		t.Fatalf("write profile failed: %v", err)
+	}
+
+	if _, err := ensurePosixUserPathConfigured("/tmp/infratrack/bin"); err == nil {
+		t.Fatal("expected malformed marker block to fail")
+	}
+}
+
+func TestPowerShellExePathAbsolute(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("windows-only")
+	}
+	got := powershellExePath()
+	if !filepath.IsAbs(got) {
+		t.Fatalf("expected absolute powershell path, got: %q", got)
+	}
+	if !strings.HasSuffix(strings.ToLower(got), `\powershell.exe`) {
+		t.Fatalf("unexpected powershell executable path: %q", got)
 	}
 }
