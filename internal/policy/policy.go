@@ -1,6 +1,8 @@
 package policy
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -23,56 +25,202 @@ type redactor struct {
 }
 
 type Policy struct {
-	denylist []*regexp.Regexp
-	redact   []redactor
+	denylist        []*regexp.Regexp
+	redact          []redactor
+	enforceDenylist bool
+}
+
+type Options struct {
+	DenylistPatterns  []string
+	RedactionKeywords []string
+	EnforceDenylist   bool
 }
 
 var credentialInImageRef = regexp.MustCompile(`^[^/\s:@]+:[^/\s@]+@`)
+var uriUserinfo = regexp.MustCompile(`(?i)([a-z][a-z0-9+.\-]*://)([^/\s:@]+):([^/\s@]+)@`)
+
+var defaultDenylistPatterns = []string{
+	"env",
+	"printenv",
+	"cat ~/.ssh/*",
+	"*id_rsa*",
+	"*.pem",
+	"*.key",
+	"kubectl get secret -o yaml",
+	"kubectl get secret -o json",
+	"gcloud auth print-access-token",
+}
+
+var defaultRedactionKeywords = []string{
+	"token",
+	"secret",
+	"password",
+	"passwd",
+	"authorization",
+	"bearer",
+	"api_key",
+	"apikey",
+	"private_key",
+}
 
 func NewDefault() *Policy {
+	p, _ := New(Options{
+		DenylistPatterns:  defaultDenylistPatterns,
+		RedactionKeywords: defaultRedactionKeywords,
+		EnforceDenylist:   false,
+	})
+	return p
+}
+
+func New(opts Options) (*Policy, error) {
+	denyPatterns := opts.DenylistPatterns
+	if len(denyPatterns) == 0 {
+		denyPatterns = defaultDenylistPatterns
+	}
+
+	redactionKeywords := opts.RedactionKeywords
+	if len(redactionKeywords) == 0 {
+		redactionKeywords = defaultRedactionKeywords
+	}
+
+	denylist := make([]*regexp.Regexp, 0, len(denyPatterns))
+	for _, pattern := range denyPatterns {
+		if strings.TrimSpace(pattern) == "" {
+			continue
+		}
+		re, err := compileDenyPattern(pattern)
+		if err != nil {
+			return nil, err
+		}
+		denylist = append(denylist, re)
+	}
+
 	return &Policy{
-		denylist: []*regexp.Regexp{
-			regexp.MustCompile(`(?i)\bcat\s+~\/\.ssh\/`),
-			regexp.MustCompile(`(?i)\bid_rsa\b`),
-			regexp.MustCompile(`(?i)\.(pem|key)(\s|$)`),
-			regexp.MustCompile(`(?i)\bkubectl\s+get\s+secret\b.*\s-o\s+(yaml|json)\b`),
-			regexp.MustCompile(`(?i)\bgcloud\s+auth\s+print-access-token\b`),
+		denylist:        denylist,
+		redact:          buildRedactors(redactionKeywords),
+		enforceDenylist: opts.EnforceDenylist,
+	}, nil
+}
+
+func buildRedactors(keywords []string) []redactor {
+	keyPattern := keywordRegexPattern(keywords)
+	keyValuePattern := keywordRegexPattern(filterKeywords(keywords, map[string]bool{
+		"authorization": true,
+		"bearer":        true,
+	}))
+	return []redactor{
+		{
+			re:   regexp.MustCompile(`(?i)(authorization\s*:\s*bearer\s+)([^\s"']+)`),
+			repl: `${1}` + RedactedValue,
 		},
-		redact: []redactor{
-			{
-				re:   regexp.MustCompile(`(?i)(authorization\s*:\s*bearer\s+)([^\s"']+)`),
-				repl: `${1}` + RedactedValue,
-			},
-			{
-				re:   regexp.MustCompile(`(?i)(--(?:token|password|passwd|api[_-]?key|apikey|secret|private[_-]?key)=)([^\s]+)`),
-				repl: `${1}` + RedactedValue,
-			},
-			{
-				re:   regexp.MustCompile(`(?i)(--(?:token|password|passwd|api[_-]?key|apikey|secret|private[_-]?key)\s+)([^\s]+)`),
-				repl: `${1}` + RedactedValue,
-			},
-			{
-				re:   regexp.MustCompile(`(?i)(-p\s+)([^\s]+)`),
-				repl: `${1}` + RedactedValue,
-			},
-			{
-				re:   regexp.MustCompile(`(?i)(\b(?:token|secret|password|passwd|api[_-]?key|apikey|private[_-]?key)\b\s*[:=]\s*)([^\s]+)`),
-				repl: `${1}` + RedactedValue,
-			},
-			{
-				re:   regexp.MustCompile(`(?i)(\b[A-Za-z_][A-Za-z0-9_]*=)"[^"]*"`),
-				repl: `${1}"` + RedactedValue + `"`,
-			},
-			{
-				re:   regexp.MustCompile(`(?i)(\b[A-Za-z_][A-Za-z0-9_]*=)'[^']*'`),
-				repl: `${1}'` + RedactedValue + `'`,
-			},
-			{
-				re:   regexp.MustCompile(`(?i)(\b[A-Za-z_][A-Za-z0-9_]*=)([^\s"']+)`),
-				repl: `${1}` + RedactedValue,
-			},
+		{
+			re:   uriUserinfo,
+			repl: `${1}` + RedactedValue + `:` + RedactedValue + `@`,
+		},
+		{
+			re:   regexp.MustCompile(`(?i)(--(?:` + keyPattern + `)=)([^\s]+)`),
+			repl: `${1}` + RedactedValue,
+		},
+		{
+			re:   regexp.MustCompile(`(?i)(--(?:` + keyPattern + `)\s+)([^\s]+)`),
+			repl: `${1}` + RedactedValue,
+		},
+		{
+			re:   regexp.MustCompile(`(?i)(-p\s+)([^\s]+)`),
+			repl: `${1}` + RedactedValue,
+		},
+		{
+			re:   regexp.MustCompile(`(?i)(\b(?:` + keyValuePattern + `)\b\s*[:=]\s*)([^\s]+)`),
+			repl: `${1}` + RedactedValue,
+		},
+		{
+			re:   regexp.MustCompile(`(?i)(\b[A-Za-z_][A-Za-z0-9_]*=)"[^"]*"`),
+			repl: `${1}"` + RedactedValue + `"`,
+		},
+		{
+			re:   regexp.MustCompile(`(?i)(\b[A-Za-z_][A-Za-z0-9_]*=)'[^']*'`),
+			repl: `${1}'` + RedactedValue + `'`,
+		},
+		{
+			re:   regexp.MustCompile(`(?i)(\b[A-Za-z_][A-Za-z0-9_]*=)([^\s"']+)`),
+			repl: `${1}` + RedactedValue,
 		},
 	}
+}
+
+func filterKeywords(keywords []string, deny map[string]bool) []string {
+	out := make([]string, 0, len(keywords))
+	for _, keyword := range keywords {
+		k := strings.TrimSpace(strings.ToLower(keyword))
+		if k == "" || deny[k] {
+			continue
+		}
+		out = append(out, k)
+	}
+	return out
+}
+
+func keywordRegexPattern(keywords []string) string {
+	if len(keywords) == 0 {
+		return "token"
+	}
+	parts := make([]string, 0, len(keywords))
+	for _, k := range keywords {
+		k = strings.TrimSpace(strings.ToLower(k))
+		if k == "" {
+			continue
+		}
+		p := regexp.QuoteMeta(k)
+		p = strings.ReplaceAll(p, `\_`, `[_-]?`)
+		p = strings.ReplaceAll(p, `\-`, `[_-]?`)
+		parts = append(parts, p)
+	}
+	if len(parts) == 0 {
+		return "token"
+	}
+	return strings.Join(parts, "|")
+}
+
+func compileDenyPattern(pattern string) (*regexp.Regexp, error) {
+	pattern = strings.TrimSpace(pattern)
+	if pattern == "" {
+		return nil, fmt.Errorf("denylist pattern cannot be empty")
+	}
+	glob := regexp.QuoteMeta(pattern)
+	glob = strings.ReplaceAll(glob, `\*`, `.*`)
+	glob = strings.ReplaceAll(glob, `\ `, `\s+`)
+	re, err := regexp.Compile(`(?i)` + glob)
+	if err != nil {
+		return nil, fmt.Errorf("invalid denylist pattern %q: %w", pattern, err)
+	}
+	return re, nil
+}
+
+func LoadFromConfig(path string) (*Policy, error) {
+	cfg, err := ParseConfigFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return New(Options{
+		DenylistPatterns:  cfg.Denylist,
+		RedactionKeywords: cfg.RedactionKeywords,
+		EnforceDenylist:   cfg.EnforceDenylist,
+	})
+}
+
+func LoadFromConfigOrDefault(path string) (*Policy, error) {
+	_, statErr := os.Stat(path)
+	if statErr != nil {
+		if os.IsNotExist(statErr) {
+			return NewDefault(), nil
+		}
+		return nil, statErr
+	}
+	return LoadFromConfig(path)
+}
+
+func (p *Policy) EnforceDenylist() bool {
+	return p.enforceDenylist
 }
 
 func (p *Policy) Apply(rawCommand string, args []string) Result {
@@ -173,6 +321,9 @@ func (p *Policy) isDenied(rawCommand string, args []string) bool {
 		if binary == "env" || binary == "printenv" {
 			return true
 		}
+		if isKubectlSecretOutputDenied(args) {
+			return true
+		}
 	}
 
 	for _, rule := range p.denylist {
@@ -181,5 +332,24 @@ func (p *Policy) isDenied(rawCommand string, args []string) bool {
 		}
 	}
 
+	return false
+}
+
+func isKubectlSecretOutputDenied(args []string) bool {
+	if len(args) < 5 {
+		return false
+	}
+	binary := strings.ToLower(filepath.Base(args[0]))
+	if binary != "kubectl" && binary != "kubectl.exe" {
+		return false
+	}
+	if !strings.EqualFold(args[1], "get") || !strings.EqualFold(args[2], "secret") {
+		return false
+	}
+	for i := 3; i < len(args)-1; i++ {
+		if args[i] == "-o" && (strings.EqualFold(args[i+1], "yaml") || strings.EqualFold(args[i+1], "json")) {
+			return true
+		}
+	}
 	return false
 }

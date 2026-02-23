@@ -74,6 +74,26 @@ func TestRandomSentinelNeverAppearsInArtifacts(t *testing.T) {
 	}
 }
 
+// Contract: C3
+func TestURIUserinfoIsRedacted(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+
+	h.initSession("uri-redaction")
+	args := append([]string{"run", "--"}, shellEchoCommand("https://alice:secret-pass@example.com/api")...)
+	h.run(args...)
+	h.stopSession()
+	runbookPath := h.exportLastMD()
+	runbook := readFile(t, runbookPath)
+
+	if strings.Contains(runbook, "secret-pass") || strings.Contains(runbook, "alice:") {
+		t.Fatalf("uri userinfo leaked in runbook")
+	}
+	if !strings.Contains(runbook, "https://[REDACTED]:[REDACTED]@example.com/api") {
+		t.Fatalf("expected uri userinfo redaction marker in runbook")
+	}
+}
+
 func readAllFiles(t *testing.T, root string) string {
 	t.Helper()
 	var b strings.Builder

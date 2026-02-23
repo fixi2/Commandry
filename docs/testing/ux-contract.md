@@ -39,10 +39,11 @@ This document defines user-visible UX behavior that must remain stable unless ex
 1. Redaction remains strict:
    - denylisted commands remain policy-redacted
    - sensitive values remain masked
-2. `REDACTED` summary counter is step-based and includes:
+2. If `policy.enforce_denylist: true`, `infratrack run` blocks denylisted commands and reports a clear policy-blocked message.
+3. `REDACTED` summary counter is step-based and includes:
    - policy-redacted steps
    - inline redaction (`[REDACTED]`) in sanitized commands
-3. Raw secrets must not appear in exported runbooks.
+4. Raw secrets must not appear in exported runbooks.
 
 ## Test Mapping
 

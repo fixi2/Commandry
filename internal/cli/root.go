@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -25,7 +26,12 @@ func NewRootCommand() (*cobra.Command, error) {
 	}
 
 	s := store.NewJSONStore(rootDir)
-	p := policy.NewDefault()
+	policyPath := filepath.Join(rootDir, "config.yaml")
+	p, policyErr := policy.LoadFromConfigOrDefault(policyPath)
+	if policyErr != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to load policy config from %s (%v). Using defaults.\n", policyPath, policyErr)
+		p = policy.NewDefault()
+	}
 	hooksState := hooks.NewFileStateStore(rootDir)
 
 	rootCmd := &cobra.Command{
@@ -209,6 +215,24 @@ func newRunCmd(s store.SessionStore, p *policy.Policy) *cobra.Command {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get working directory: %w", err)
+			}
+			if sanitized.Denied && p.EnforceDenylist() {
+				step := store.Step{
+					Timestamp:  time.Now().UTC(),
+					Command:    sanitized.Command,
+					Status:     "REDACTED",
+					Reason:     "policy_blocked",
+					DurationMS: 0,
+					CWD:        cwd,
+				}
+				if err := s.AddStep(cmd.Context(), step); err != nil {
+					return fmt.Errorf("record blocked step: %w", err)
+				}
+				printWarn(cmd.ErrOrStderr(), "Command blocked by policy denylist. Step recorded as %s.", policy.DeniedPlaceholder)
+				return &ExitError{
+					Code: 2,
+					Err:  errors.New("command blocked by policy denylist"),
+				}
 			}
 
 			result, runErr := capture.RunCommand(cmd.Context(), args, cwd)

@@ -301,6 +301,7 @@ func (s *JSONStore) ensureConfigFile() error {
     - api_key
     - apikey
     - private_key
+  enforce_denylist: false
 capture:
   include_stdout: false
   include_stderr: false

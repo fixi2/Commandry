@@ -182,7 +182,8 @@ Reset/uninstall:
 - Captured metadata is minimal: timestamp, sanitized command, exit code, duration, and optional working directory.
 - Stdout and stderr are never stored in MVP.
 - Redaction happens before writing to disk.
-- Denylisted commands are stored as `[REDACTED BY POLICY]`.
+- Denylisted commands are stored as `[REDACTED BY POLICY]` by default.
+- Optional: set `policy.enforce_denylist: true` in `config.yaml` to block denylisted commands before execution in `infratrack run`.
 - InfraTrack does not perform telemetry, analytics, or network calls in MVP.
 
 Quick examples:
