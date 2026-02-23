@@ -148,6 +148,7 @@ func normalizeRunbook(s string) string {
 	lines := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
 	out := make([]string, 0, len(lines))
 	stepTitleRE := regexp.MustCompile(`^\d+\. \[(OK|FAILED|REDACTED|UNKNOWN)\] .+$`)
+	inShBlock := false
 	for _, line := range lines {
 		if strings.HasPrefix(line, "Duration: ") {
 			out = append(out, "Duration: <normalized> ms")
@@ -164,7 +165,17 @@ func normalizeRunbook(s string) string {
 				continue
 			}
 		}
-		if strings.Contains(line, "echo hello") {
+		if line == "```sh" {
+			inShBlock = true
+			out = append(out, line)
+			continue
+		}
+		if inShBlock && line == "```" {
+			inShBlock = false
+			out = append(out, line)
+			continue
+		}
+		if inShBlock && strings.TrimSpace(line) != "" {
 			out = append(out, "<normalized-command>")
 			continue
 		}
