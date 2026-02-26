@@ -1,0 +1,9 @@
+# <type>(<scope>): <imperative summary>
+#
+# Example:
+# fix(setup): migrate legacy config dir to commandry
+#
+# Body (optional):
+# - Why this change is needed.
+# - Key implementation detail(s).
+# - Risk/compatibility notes.
