@@ -7,14 +7,16 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/fixi2/InfraTrack/internal/appdir"
 )
 
 func DefaultStatePath() (string, error) {
-	cfg, err := os.UserConfigDir()
+	cfg, err := appdir.ResolveConfigRoot()
 	if err != nil {
-		return "", fmt.Errorf("resolve user config dir: %w", err)
+		return "", err
 	}
-	return filepath.Join(cfg, "infratrack", "setup-state.json"), nil
+	return filepath.Join(cfg, "setup-state.json"), nil
 }
 
 func LoadState(path string) (StateFile, bool, error) {

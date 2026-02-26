@@ -9,7 +9,7 @@ func TestUpsertBashHookBlock(t *testing.T) {
 	t.Parallel()
 
 	original := "export PATH=$PATH:$HOME/bin\n"
-	updated, changed, err := upsertHookBlock(original, bashHookBeginMarker, bashHookEndMarker, bashHookBlock("/usr/local/bin/infratrack"))
+	updated, changed, err := upsertHookBlock(original, bashHookBeginMarker, bashHookEndMarker, bashHookBlock("/usr/local/bin/cmdry"))
 	if err != nil {
 		t.Fatalf("upsert bash block failed: %v", err)
 	}
@@ -20,7 +20,7 @@ func TestUpsertBashHookBlock(t *testing.T) {
 		t.Fatal("expected bash markers in content")
 	}
 
-	second, changed2, err := upsertHookBlock(updated, bashHookBeginMarker, bashHookEndMarker, bashHookBlock("/usr/local/bin/infratrack"))
+	second, changed2, err := upsertHookBlock(updated, bashHookBeginMarker, bashHookEndMarker, bashHookBlock("/usr/local/bin/cmdry"))
 	if err != nil {
 		t.Fatalf("second upsert failed: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestUpsertBashHookBlock(t *testing.T) {
 func TestRemoveBashHookBlock(t *testing.T) {
 	t.Parallel()
 
-	withBlock, _, err := upsertHookBlock("echo hi\n", bashHookBeginMarker, bashHookEndMarker, bashHookBlock("/usr/local/bin/infratrack"))
+	withBlock, _, err := upsertHookBlock("echo hi\n", bashHookBeginMarker, bashHookEndMarker, bashHookBlock("/usr/local/bin/cmdry"))
 	if err != nil {
 		t.Fatalf("create block failed: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestRemoveBashHookBlock(t *testing.T) {
 func TestUpsertZshHookBlock(t *testing.T) {
 	t.Parallel()
 
-	updated, changed, err := upsertHookBlock("", zshHookBeginMarker, zshHookEndMarker, zshHookBlock("/usr/local/bin/infratrack"))
+	updated, changed, err := upsertHookBlock("", zshHookBeginMarker, zshHookEndMarker, zshHookBlock("/usr/local/bin/cmdry"))
 	if err != nil {
 		t.Fatalf("upsert zsh block failed: %v", err)
 	}
@@ -72,13 +72,19 @@ func TestUpsertZshHookBlock(t *testing.T) {
 
 func TestHookBlocksUseAbsolutePath(t *testing.T) {
 	t.Parallel()
-	bashBlock := bashHookBlock("/usr/local/bin/infratrack")
-	if !strings.Contains(bashBlock, "'/usr/local/bin/infratrack' hook record") {
+	bashBlock := bashHookBlock("/usr/local/bin/cmdry")
+	if !strings.Contains(bashBlock, "'/usr/local/bin/cmdry' hook record") {
 		t.Fatalf("expected absolute path in bash block: %s", bashBlock)
 	}
-	zshBlock := zshHookBlock("/usr/local/bin/infratrack")
-	if !strings.Contains(zshBlock, "'/usr/local/bin/infratrack' hook record") {
+	zshBlock := zshHookBlock("/usr/local/bin/cmdry")
+	if !strings.Contains(zshBlock, "'/usr/local/bin/cmdry' hook record") {
 		t.Fatalf("expected absolute path in zsh block: %s", zshBlock)
+	}
+	if !strings.Contains(bashBlock, "$HOME/.config/commandry") {
+		t.Fatalf("expected commandry state path in bash block: %s", bashBlock)
+	}
+	if !strings.Contains(zshBlock, "$HOME/.config/commandry") {
+		t.Fatalf("expected commandry state path in zsh block: %s", zshBlock)
 	}
 	if !strings.Contains(bashBlock, "__infratrack_should_prefix") {
 		t.Fatalf("expected conditional REC helper in bash block: %s", bashBlock)
@@ -115,7 +121,7 @@ func TestHookBlocksUseAbsolutePath(t *testing.T) {
 func TestUpsertHookBlockMalformedMarkers(t *testing.T) {
 	t.Parallel()
 	content := bashHookEndMarker + "\n" + bashHookBeginMarker + "\n"
-	_, _, err := upsertHookBlock(content, bashHookBeginMarker, bashHookEndMarker, bashHookBlock("/usr/local/bin/infratrack"))
+	_, _, err := upsertHookBlock(content, bashHookBeginMarker, bashHookEndMarker, bashHookBlock("/usr/local/bin/cmdry"))
 	if err == nil {
 		t.Fatal("expected malformed markers error")
 	}

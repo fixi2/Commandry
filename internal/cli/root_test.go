@@ -263,7 +263,7 @@ func TestRunBlockedByEnforcedDenylist(t *testing.T) {
 		t.Fatalf("init failed: %v", err)
 	}
 
-	cfgPath := filepath.Join(appData, "infratrack", "config.yaml")
+	cfgPath := filepath.Join(appData, "commandry", "config.yaml")
 	cfg := strings.Join([]string{
 		"policy:",
 		"  denylist:",

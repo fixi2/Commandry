@@ -138,7 +138,7 @@ func isInfraTrackInvocation(args []string) bool {
 		return false
 	}
 	binary := strings.ToLower(filepath.Base(strings.Trim(args[0], `"'`)))
-	return binary == "infratrack" || binary == "infratrack.exe" || binary == "it"
+	return binary == "cmdry" || binary == "cmdry.exe" || binary == "cmdr" || binary == "infratrack" || binary == "infratrack.exe" || binary == "it"
 }
 
 func normalizeTimestamp(ts time.Time) time.Time {

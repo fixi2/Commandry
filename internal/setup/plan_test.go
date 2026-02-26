@@ -40,7 +40,7 @@ func TestBuildStatusUsesState(t *testing.T) {
 	}
 	if err := SaveState(statePath, StateFile{
 		SchemaVersion:    StateSchemaVersion,
-		InstalledBinPath: "C:\\Users\\me\\AppData\\Local\\InfraTrack\\bin\\infratrack.exe",
+		InstalledBinPath: "C:\\Users\\me\\AppData\\Local\\Commandry\\bin\\cmdry.exe",
 		PendingFinalize:  true,
 		Timestamp:        time.Now().UTC(),
 	}); err != nil {
@@ -98,8 +98,8 @@ func TestPathContainsDirNormalizesWindowsCaseAndSlashes(t *testing.T) {
 	if os.PathSeparator != '\\' {
 		t.Skip("windows-only normalization assertion")
 	}
-	pathEnv := `C:\Tools;C:/Users/Vladislav/AppData/Local/InfraTrack/bin/;D:\Other`
-	if !PathContainsDir(pathEnv, `c:\users\vladislav\appdata\local\infratrack\bin`) {
+	pathEnv := `C:\Tools;C:/Users/Vladislav/AppData/Local/Commandry/bin/;D:\Other`
+	if !PathContainsDir(pathEnv, `c:\users\vladislav\appdata\local\commandry\bin`) {
 		t.Fatalf("expected normalized path match")
 	}
 }
@@ -109,7 +109,7 @@ func TestStateRoundTrip(t *testing.T) {
 	in := StateFile{
 		SchemaVersion:    StateSchemaVersion,
 		CreatedDirs:      []string{"a", "b"},
-		InstalledBinPath: "bin/infratrack",
+		InstalledBinPath: "bin/cmdry",
 		PathEntryAdded:   "bin",
 		FilesTouched:     []TouchedFile{{Path: "profile", Marker: "BEGIN"}},
 		PendingFinalize:  false,

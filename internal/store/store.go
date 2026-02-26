@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/fixi2/InfraTrack/internal/appdir"
 )
 
 var (
@@ -44,12 +46,11 @@ type JSONStore struct {
 }
 
 func DefaultRootDir() (string, error) {
-	configDir, err := os.UserConfigDir()
+	configDir, err := appdir.ResolveConfigRoot()
 	if err != nil {
-		return "", fmt.Errorf("resolve user config dir: %w", err)
+		return "", err
 	}
-
-	return filepath.Join(configDir, "infratrack"), nil
+	return configDir, nil
 }
 
 func NewJSONStore(rootPath string) *JSONStore {

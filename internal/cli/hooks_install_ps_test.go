@@ -9,7 +9,7 @@ func TestUpsertPowerShellHookBlock(t *testing.T) {
 	t.Parallel()
 
 	original := "function global:prompt { \"PS> \" }\n"
-	updated, changed, err := upsertPowerShellHookBlock(original, "C:\\InfraTrack\\infratrack.exe")
+	updated, changed, err := upsertPowerShellHookBlock(original, "C:\\Commandry\\cmdry.exe")
 	if err != nil {
 		t.Fatalf("upsert block failed: %v", err)
 	}
@@ -20,7 +20,7 @@ func TestUpsertPowerShellHookBlock(t *testing.T) {
 		t.Fatal("expected markers to be present after upsert")
 	}
 
-	second, changed2, err := upsertPowerShellHookBlock(updated, "C:\\InfraTrack\\infratrack.exe")
+	second, changed2, err := upsertPowerShellHookBlock(updated, "C:\\Commandry\\cmdry.exe")
 	if err != nil {
 		t.Fatalf("second upsert failed: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestUpsertPowerShellHookBlock(t *testing.T) {
 func TestRemovePowerShellHookBlock(t *testing.T) {
 	t.Parallel()
 
-	withBlock, _, err := upsertPowerShellHookBlock("Write-Host \"hello\"\n", "C:\\InfraTrack\\infratrack.exe")
+	withBlock, _, err := upsertPowerShellHookBlock("Write-Host \"hello\"\n", "C:\\Commandry\\cmdry.exe")
 	if err != nil {
 		t.Fatalf("upsert block failed: %v", err)
 	}
@@ -77,8 +77,11 @@ func TestHooksHomeDirOverride(t *testing.T) {
 
 func TestPowerShellHookBlockUsesAbsolutePath(t *testing.T) {
 	t.Parallel()
-	block := powerShellHookBlock("C:\\InfraTrack\\infratrack.exe")
-	if !strings.Contains(block, "& 'C:\\InfraTrack\\infratrack.exe' hook record") {
+	block := powerShellHookBlock("C:\\Commandry\\cmdry.exe")
+	if !strings.Contains(block, "& 'C:\\Commandry\\cmdry.exe' hook record") {
 		t.Fatalf("expected absolute executable path in hook block, got: %s", block)
+	}
+	if !strings.Contains(block, "Join-Path $env:APPDATA \"commandry\"") {
+		t.Fatalf("expected commandry root path in hook block, got: %s", block)
 	}
 }

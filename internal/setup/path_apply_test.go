@@ -20,7 +20,7 @@ func TestEnsureWindowsUserPathConfiguredAddsEntry(t *testing.T) {
 		writeWindowsUserPathFn = prevWrite
 	}()
 
-	binDir := `C:\Users\test\AppData\Local\InfraTrack\bin`
+	binDir := `C:\Users\test\AppData\Local\Commandry\bin`
 	readWindowsUserPathFn = func() (string, error) {
 		return `C:\Tools`, nil
 	}
@@ -61,7 +61,7 @@ func TestEnsureWindowsUserPathConfiguredNoChangeWhenPresent(t *testing.T) {
 		writeWindowsUserPathFn = prevWrite
 	}()
 
-	binDir := `C:\Users\test\AppData\Local\InfraTrack\bin`
+	binDir := `C:\Users\test\AppData\Local\Commandry\bin`
 	readWindowsUserPathFn = func() (string, error) {
 		return strings.Join([]string{`C:\Tools`, binDir}, ";"), nil
 	}
@@ -84,10 +84,10 @@ func TestBuildWindowsUserPathValueDedupesAndPrepends(t *testing.T) {
 		t.Skip("windows-only")
 	}
 
-	binDir := `C:\Users\test\AppData\Local\InfraTrack\bin`
+	binDir := `C:\Users\test\AppData\Local\Commandry\bin`
 	current := strings.Join([]string{
 		`C:\Tools`,
-		`c:/users/test/AppData/Local/InfraTrack/bin/`,
+		`c:/users/test/AppData/Local/Commandry/bin/`,
 		`D:\Work`,
 	}, ";")
 	got := buildWindowsUserPathValue(current, binDir)
@@ -98,7 +98,7 @@ func TestBuildWindowsUserPathValueDedupesAndPrepends(t *testing.T) {
 	if normalizePathForCompare(parts[0]) != normalizePathForCompare(binDir) {
 		t.Fatalf("expected first part to be target, got %q", parts[0])
 	}
-	if Count := strings.Count(strings.ToLower(got), strings.ToLower(`infratrack\bin`)); Count != 1 {
+	if Count := strings.Count(strings.ToLower(got), strings.ToLower(`commandry\bin`)); Count != 1 {
 		t.Fatalf("expected single target occurrence, got %d (%q)", Count, got)
 	}
 }
@@ -110,7 +110,7 @@ func TestEnsurePosixUserPathConfiguredUsesMarkerBlock(t *testing.T) {
 	profile := filepath.Join(t.TempDir(), ".profile")
 	resolvePosixProfileFn = func() (string, error) { return profile, nil }
 
-	binDir := "/tmp/infratrack/bin"
+	binDir := "/tmp/commandry/bin"
 	res, err := ensurePosixUserPathConfigured(binDir)
 	if err != nil {
 		t.Fatalf("ensurePosixUserPathConfigured failed: %v", err)
@@ -158,7 +158,7 @@ func TestEnsurePosixUserPathConfiguredRejectsControlChars(t *testing.T) {
 	profile := filepath.Join(t.TempDir(), ".profile")
 	resolvePosixProfileFn = func() (string, error) { return profile, nil }
 
-	if _, err := ensurePosixUserPathConfigured("/tmp/infratrack\nbin"); err == nil {
+	if _, err := ensurePosixUserPathConfigured("/tmp/commandry\nbin"); err == nil {
 		t.Fatal("expected control-char path to fail")
 	}
 }
@@ -173,7 +173,7 @@ func TestEnsurePosixUserPathConfiguredMalformedMarkerFails(t *testing.T) {
 		t.Fatalf("write profile failed: %v", err)
 	}
 
-	if _, err := ensurePosixUserPathConfigured("/tmp/infratrack/bin"); err == nil {
+	if _, err := ensurePosixUserPathConfigured("/tmp/commandry/bin"); err == nil {
 		t.Fatal("expected malformed marker block to fail")
 	}
 }

@@ -153,7 +153,7 @@ func Apply(input ApplyInput) (ApplyResult, error) {
 	}
 	res.Actions = append(res.Actions, fmt.Sprintf("Saved setup state to %s", statePath))
 	if res.PendingFinalize {
-		res.Notes = append(res.Notes, "Restart terminal and run `infratrack setup apply` again to complete binary swap.")
+		res.Notes = append(res.Notes, "Restart terminal and run `cmdry setup apply` again to complete binary swap.")
 	}
 	return res, nil
 }

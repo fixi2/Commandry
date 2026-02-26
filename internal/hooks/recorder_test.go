@@ -147,6 +147,36 @@ func TestRecorderSkipsInfraTrackCommand(t *testing.T) {
 	if resultAlias.SkippedReason != "self_command" {
 		t.Fatalf("unexpected alias skip reason: %s", resultAlias.SkippedReason)
 	}
+
+	resultCmdry, err := rec.Record(ctx, RecordInput{
+		Command:    "cmdry status",
+		ExitCode:   0,
+		DurationMS: 5,
+	})
+	if err != nil {
+		t.Fatalf("record cmdry self command: %v", err)
+	}
+	if resultCmdry.Recorded {
+		t.Fatalf("expected cmdry self command to be skipped")
+	}
+	if resultCmdry.SkippedReason != "self_command" {
+		t.Fatalf("unexpected cmdry skip reason: %s", resultCmdry.SkippedReason)
+	}
+
+	resultCmdr, err := rec.Record(ctx, RecordInput{
+		Command:    "cmdr status",
+		ExitCode:   0,
+		DurationMS: 5,
+	})
+	if err != nil {
+		t.Fatalf("record cmdr self command: %v", err)
+	}
+	if resultCmdr.Recorded {
+		t.Fatalf("expected cmdr self command to be skipped")
+	}
+	if resultCmdr.SkippedReason != "self_command" {
+		t.Fatalf("unexpected cmdr skip reason: %s", resultCmdr.SkippedReason)
+	}
 }
 
 func TestRecorderAppliesPolicy(t *testing.T) {

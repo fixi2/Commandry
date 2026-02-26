@@ -160,7 +160,7 @@ func TestUndoWindowsPathEntryRemoval(t *testing.T) {
 		writeWindowsUserPathFn = prevWrite
 	}()
 
-	target := `C:\Users\test\AppData\Local\InfraTrack\bin`
+	target := `C:\Users\test\AppData\Local\Commandry\bin`
 	readWindowsUserPathFn = func() (string, error) {
 		return strings.Join([]string{`C:\Tools`, target, `D:\Work`}, ";"), nil
 	}

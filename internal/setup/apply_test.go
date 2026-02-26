@@ -17,7 +17,7 @@ func TestApplyInstallsBinaryAndWritesState(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		source += ".exe"
 	}
-	if err := os.WriteFile(source, []byte("infratrack-binary"), 0o700); err != nil {
+	if err := os.WriteFile(source, []byte("cmdry-binary"), 0o700); err != nil {
 		t.Fatalf("write source failed: %v", err)
 	}
 
@@ -44,9 +44,9 @@ func TestApplyInstallsBinaryAndWritesState(t *testing.T) {
 }
 
 func TestApplyWindowsStagingName(t *testing.T) {
-	target := `C:\Users\me\AppData\Local\InfraTrack\bin\infratrack.exe`
+	target := `C:\Users\me\AppData\Local\Commandry\bin\cmdry.exe`
 	got := windowsStagingPath(target)
-	if !strings.HasSuffix(strings.ToLower(got), "infratrack.new.exe") {
+	if !strings.HasSuffix(strings.ToLower(got), "cmdry.new.exe") {
 		t.Fatalf("unexpected staging path: %s", got)
 	}
 }
@@ -60,13 +60,13 @@ func TestApplyRejectsControlCharsInBinDir(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		source += ".exe"
 	}
-	if err := os.WriteFile(source, []byte("infratrack-binary"), 0o700); err != nil {
+	if err := os.WriteFile(source, []byte("cmdry-binary"), 0o700); err != nil {
 		t.Fatalf("write source failed: %v", err)
 	}
 
 	_, err := Apply(ApplyInput{
 		Scope:            ScopeUser,
-		BinDir:           "/tmp/infratrack\nbin",
+		BinDir:           "/tmp/commandry\nbin",
 		NoPath:           true,
 		Completion:       CompletionNone,
 		SourceBinaryPath: source,
@@ -100,7 +100,7 @@ func TestApplyWindowsPreservesPathOwnershipAcrossIdempotentApply(t *testing.T) {
 	}
 
 	source := filepath.Join(root, "source-bin.exe")
-	if err := os.WriteFile(source, []byte("infratrack-binary"), 0o700); err != nil {
+	if err := os.WriteFile(source, []byte("cmdry-binary"), 0o700); err != nil {
 		t.Fatalf("write source failed: %v", err)
 	}
 	binDir := filepath.Join(root, "bin")
@@ -151,8 +151,8 @@ func TestApplyWindowsPreservesPathOwnershipAcrossIdempotentApply(t *testing.T) {
 }
 
 func TestFinalizeWindowsBinaryRollsBackOnActivationFailure(t *testing.T) {
-	target := `C:\bin\infratrack.exe`
-	staging := `C:\bin\infratrack.new.exe`
+	target := `C:\bin\cmdry.exe`
+	staging := `C:\bin\cmdry.new.exe`
 	backup := target + ".bak"
 
 	origRename := osRenameFn

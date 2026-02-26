@@ -31,13 +31,13 @@ func ResolveCompletion(v string) (CompletionMode, error) {
 func DefaultBinDir() (string, error) {
 	if runtime.GOOS == "windows" {
 		if localAppData := strings.TrimSpace(os.Getenv("LOCALAPPDATA")); localAppData != "" {
-			return filepath.Join(localAppData, "InfraTrack", "bin"), nil
+			return filepath.Join(localAppData, "Commandry", "bin"), nil
 		}
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("resolve home dir: %w", err)
 		}
-		return filepath.Join(home, "AppData", "Local", "InfraTrack", "bin"), nil
+		return filepath.Join(home, "AppData", "Local", "Commandry", "bin"), nil
 	}
 
 	home, err := os.UserHomeDir()
@@ -56,7 +56,7 @@ func CurrentExecutable() (string, error) {
 }
 
 func ResolveTargetBinaryPath(binDir string) string {
-	name := "infratrack"
+	name := "cmdry"
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
