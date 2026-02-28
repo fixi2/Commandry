@@ -39,7 +39,7 @@ jobs:
           go-version-file: go.mod
       - name: Build binary once
         shell: pwsh
-        run: go build -o .\cmdry.exe ./cmd/infratrack
+        run: go build -o .\cmdry.exe ./cmd/cmdry
       - name: Run runbook readability unit pack
         shell: pwsh
         run: |
@@ -62,7 +62,7 @@ jobs:
           go-version-file: go.mod
       - name: Build binary once
         shell: pwsh
-        run: go build -o .\cmdry.exe ./cmd/infratrack
+        run: go build -o .\cmdry.exe ./cmd/cmdry
       - name: Run fast black-box contract pack
         shell: pwsh
         env:
@@ -81,7 +81,7 @@ jobs:
           go-version-file: go.mod
       - name: Build binary once
         shell: pwsh
-        run: go build -o .\cmdry.exe ./cmd/infratrack
+        run: go build -o .\cmdry.exe ./cmd/cmdry
       - name: Run full black-box suite
         shell: pwsh
         env:
@@ -105,7 +105,7 @@ jobs:
           go-version-file: go.mod
       - name: Build binary once
         shell: pwsh
-        run: go build -o .\cmdry.exe ./cmd/infratrack
+        run: go build -o .\cmdry.exe ./cmd/cmdry
       - name: Black-box soak (volume + repeated runs)
         shell: pwsh
         env:

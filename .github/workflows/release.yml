@@ -24,7 +24,7 @@ jobs:
 
       - name: Build binary once
         shell: pwsh
-        run: go build -o .\cmdry.exe ./cmd/infratrack
+        run: go build -o .\cmdry.exe ./cmd/cmdry
 
       - name: Run release soak black-box pack
         shell: pwsh
@@ -60,10 +60,10 @@ jobs:
           mkdir -p dist
           LDFLAGS="-s -w -X github.com/fixi2/Commandry/internal/buildinfo.Version=${VERSION}"
 
-          GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/cmdry-linux-amd64 ./cmd/infratrack
-          GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/cmdry-darwin-amd64 ./cmd/infratrack
-          GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/cmdry-darwin-arm64 ./cmd/infratrack
-          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/cmdry-windows-amd64.exe ./cmd/infratrack
+          GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/cmdry-linux-amd64 ./cmd/cmdry
+          GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/cmdry-darwin-amd64 ./cmd/cmdry
+          GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/cmdry-darwin-arm64 ./cmd/cmdry
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/cmdry-windows-amd64.exe ./cmd/cmdry
           cp dist/cmdry-windows-amd64.exe dist/cmdry.exe
 
       - name: Generate SHA256 checksums

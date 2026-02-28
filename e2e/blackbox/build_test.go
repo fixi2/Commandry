@@ -43,7 +43,7 @@ func resolveBinaryPath(t *testing.T) string {
 		_ = os.MkdirAll(gocache, 0o755)
 		_ = os.MkdirAll(gotmp, 0o755)
 		_ = os.MkdirAll(gomodcache, 0o755)
-		cmd := exec.Command("go", "build", "-o", binPath, "./cmd/infratrack")
+		cmd := exec.Command("go", "build", "-o", binPath, "./cmd/cmdry")
 		cmd.Dir = repoRoot()
 		cmd.Env = append(os.Environ(),
 			"GOCACHE="+gocache,

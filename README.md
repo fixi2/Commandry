@@ -39,7 +39,7 @@ Commands:
 
 ```bash
 go mod tidy
-go build ./cmd/infratrack
+go build ./cmd/cmdry
 ```
 
 The binary is created as `cmdry` (or `cmdry.exe` on Windows).

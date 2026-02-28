@@ -16,7 +16,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\.tests\use-local-go-cache.
 Build binary once:
 
 ```powershell
-go build -o .\cmdry.exe ./cmd/infratrack
+go build -o .\cmdry.exe ./cmd/cmdry
 ```
 
 Run fast black-box pack:
@@ -74,7 +74,7 @@ Review every golden update in PR.
 Build once:
 
 ```powershell
-go build -o .\cmdry.exe ./cmd/infratrack
+go build -o .\cmdry.exe ./cmd/cmdry
 ```
 
 UX output pack (tips/labels/setup output contract):
