@@ -1,6 +1,8 @@
 # Commandry (MVP)
 
 Commandry is a local-first CLI that records explicitly executed commands and exports a deterministic markdown runbook.
+This project was renamed from InfraTrack to Commandry during the `v0.6.0` rebrand.
+Some migration-safe technical references still use the old name internally while the remaining technical contracts are being moved.
 
 ## Install
 
@@ -89,7 +91,7 @@ cmdry i
 - `cmdry export --last --md` (alias: `x`) exports the latest completed session to markdown.
 - `cmdry export --session <id> -f md` exports a specific completed session by id.
 - `cmdry sessions list` lists recent completed sessions (use `-n` to control count).
-- `cmdry alias --shell <powershell|bash|zsh|cmd>` prints alias snippet for `it` (no system changes).
+- `cmdry alias --shell <powershell|bash|zsh|cmd>` prints alias snippet for `cmdr` (no system changes).
 - `cmdry version` (alias: `v`) prints build version metadata.
 - Short flags: `export --last/-l`, `export --format/-f md`; `--md` remains supported for compatibility.
 

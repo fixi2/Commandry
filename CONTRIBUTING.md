@@ -1,5 +1,14 @@
 # Contributing
 
+## Rebrand Notes
+
+The project was renamed from InfraTrack to Commandry during the `v0.6.0` rebrand.
+
+- Treat `InfraTrack` / `infratrack` as legacy compatibility text, not as a second product name.
+- Do not introduce new legacy-name references in new changes unless compatibility explicitly requires it.
+- When touching a legacy file, move it toward `Commandry` where the change is low-risk, or open a focused issue/PR for the remaining cleanup.
+- Be deliberate around risky rename areas: public API/contracts, external integrations, migrations, release metadata, and compatibility paths.
+
 ## Commit Message Style
 
 Default format:
@@ -43,6 +52,18 @@ When using an exception:
 - keep wording clear and concrete
 - avoid inventing many new types/scopes without reason
 
+## Merge Rules
+
+- Use fast-forward merge when the branch already has a clean, intentional history.
+- Use a non-fast-forward merge only when keeping the branch boundary is useful as a distinct milestone.
+- If a branch has noisy or duplicate commits, clean the branch history before merging.
+
+## Branch Hygiene
+
+- Keep one branch focused on one logical change.
+- Do not mix code changes, docs cleanup, and unrelated test churn in one branch unless they are inseparable.
+- Before commit/merge, remove temporary local artifacts (`*.exe`, `*.tmp`, `*.go.<digits>`, local transcripts) that should not enter the repository.
+
 ## Optional local commit template
 
 This repository includes `.gitmessage` to help keep commit titles consistent.
@@ -50,4 +71,3 @@ This repository includes `.gitmessage` to help keep commit titles consistent.
 Use it locally:
 
 `git config commit.template .gitmessage`
-
