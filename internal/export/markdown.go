@@ -8,8 +8,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/fixi2/InfraTrack/internal/buildinfo"
-	"github.com/fixi2/InfraTrack/internal/store"
+	"github.com/fixi2/Commandry/internal/buildinfo"
+	"github.com/fixi2/Commandry/internal/store"
 )
 
 var nonSlugChars = regexp.MustCompile(`[^a-z0-9]+`)

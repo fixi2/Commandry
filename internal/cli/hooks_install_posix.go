@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/fixi2/InfraTrack/internal/textblock"
+	"github.com/fixi2/Commandry/internal/textblock"
 	"github.com/spf13/cobra"
 )
 

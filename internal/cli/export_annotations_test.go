@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fixi2/InfraTrack/internal/store"
+	"github.com/fixi2/Commandry/internal/store"
 )
 
 func TestCollectFlaggedSteps(t *testing.T) {

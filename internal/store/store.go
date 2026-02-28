@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fixi2/InfraTrack/internal/appdir"
+	"github.com/fixi2/Commandry/internal/appdir"
 )
 
 var (

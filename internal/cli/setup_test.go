@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fixi2/InfraTrack/internal/setup"
+	"github.com/fixi2/Commandry/internal/setup"
 )
 
 func TestSetupCommandsExist(t *testing.T) {

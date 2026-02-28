@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fixi2/InfraTrack/internal/hooks"
-	"github.com/fixi2/InfraTrack/internal/policy"
-	"github.com/fixi2/InfraTrack/internal/store"
+	"github.com/fixi2/Commandry/internal/hooks"
+	"github.com/fixi2/Commandry/internal/policy"
+	"github.com/fixi2/Commandry/internal/store"
 	"github.com/spf13/cobra"
 )
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/fixi2/InfraTrack/internal/cli"
+	"github.com/fixi2/Commandry/internal/cli"
 )
 
 type exitCoder interface {

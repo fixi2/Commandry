@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/fixi2/InfraTrack/internal/store"
+	"github.com/fixi2/Commandry/internal/store"
 )
 
 func TestDetectPreconditions(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fixi2/InfraTrack/internal/policy"
-	"github.com/fixi2/InfraTrack/internal/store"
+	"github.com/fixi2/Commandry/internal/policy"
+	"github.com/fixi2/Commandry/internal/store"
 )
 
 type RecordInput struct {

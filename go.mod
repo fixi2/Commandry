@@ -1,4 +1,4 @@
-module github.com/fixi2/InfraTrack
+module github.com/fixi2/Commandry
 
 go 1.22
 

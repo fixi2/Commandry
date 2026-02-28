@@ -8,7 +8,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/fixi2/InfraTrack/internal/setup"
+	"github.com/fixi2/Commandry/internal/setup"
 	"github.com/spf13/cobra"
 )
 

@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/fixi2/InfraTrack/internal/store"
+	"github.com/fixi2/Commandry/internal/store"
 	"github.com/spf13/cobra"
 )
 

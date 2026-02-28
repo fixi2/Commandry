@@ -9,13 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fixi2/InfraTrack/internal/buildinfo"
-	"github.com/fixi2/InfraTrack/internal/capture"
-	"github.com/fixi2/InfraTrack/internal/export"
-	"github.com/fixi2/InfraTrack/internal/hooks"
-	"github.com/fixi2/InfraTrack/internal/policy"
-	"github.com/fixi2/InfraTrack/internal/store"
-	"github.com/fixi2/InfraTrack/internal/util"
+	"github.com/fixi2/Commandry/internal/buildinfo"
+	"github.com/fixi2/Commandry/internal/capture"
+	"github.com/fixi2/Commandry/internal/export"
+	"github.com/fixi2/Commandry/internal/hooks"
+	"github.com/fixi2/Commandry/internal/policy"
+	"github.com/fixi2/Commandry/internal/store"
+	"github.com/fixi2/Commandry/internal/util"
 	"github.com/spf13/cobra"
 )
 

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/fixi2/InfraTrack/internal/export"
-	"github.com/fixi2/InfraTrack/internal/store"
+	"github.com/fixi2/Commandry/internal/export"
+	"github.com/fixi2/Commandry/internal/store"
 )
 
 const (

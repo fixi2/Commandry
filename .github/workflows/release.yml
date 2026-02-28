@@ -58,7 +58,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          LDFLAGS="-s -w -X github.com/fixi2/InfraTrack/internal/buildinfo.Version=${VERSION}"
+          LDFLAGS="-s -w -X github.com/fixi2/Commandry/internal/buildinfo.Version=${VERSION}"
 
           GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/cmdry-linux-amd64 ./cmd/infratrack
           GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/cmdry-darwin-amd64 ./cmd/infratrack

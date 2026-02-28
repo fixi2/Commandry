@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fixi2/InfraTrack/internal/store"
+	"github.com/fixi2/Commandry/internal/store"
 )
 
 func TestRenderMarkdownGolden(t *testing.T) {
