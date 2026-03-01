@@ -1,37 +1,59 @@
-## What Changed
+## Summary
 
 - Briefly describe the change.
 
 ## Why
 
-- What problem does this solve?
+- What user, developer, or reliability problem does this solve?
 
-## How I Tested It
+## Related issue
+
+- Link the issue if one exists.
+- If this is a direct follow-up, say so clearly.
+
+## What changed
+
+- List the key implementation changes.
+- Keep this focused on behavior, not just file names.
+
+## How I tested it
 
 - [ ] Unit tests
 - [ ] Black-box tests
 - [ ] Manual terminal check
+- [ ] Docs-only change
 - [ ] Not applicable
 
-List the exact commands or flows you used when it matters.
+Commands or flows used:
 
-## User Impact
+```text
+Paste exact commands here when they matter.
+```
+
+## User impact
 
 - [ ] CLI output changed
 - [ ] Setup / install behavior changed
 - [ ] Hooks behavior changed
 - [ ] Export / runbook output changed
+- [ ] Docs only
 - [ ] No user-facing change
 
-## Breaking Change
+## Compatibility and risk
 
-- [ ] No
-- [ ] Yes (explain below)
+- [ ] No breaking change
+- [ ] Breaking change (describe below)
+- [ ] Migration / compatibility path involved
 
-If yes, describe what users need to change.
+If users need to change anything, explain it clearly.
 
-## Docs / Follow-up
+## Docs and follow-up
 
-- [ ] Docs updated
-- [ ] Tests updated
+- [ ] README updated
+- [ ] TESTING.md updated
+- [ ] Issue templates / docs links updated
 - [ ] Follow-up issue needed
+
+Anything reviewers should pay extra attention to:
+
+- ...

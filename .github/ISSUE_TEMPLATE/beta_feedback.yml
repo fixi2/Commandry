@@ -1,0 +1,46 @@
+﻿name: Beta feedback
+description: Share first-impression feedback from real use during the beta period
+title: "[Beta]: "
+labels:
+  - beta-feedback
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: What did you try?
+      description: Describe the real workflow you used Commandry for.
+      placeholder: I used Commandry to capture a deploy / local debug / infra fix workflow...
+    validations:
+      required: true
+
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked well?
+      placeholder: The setup was quick, the runbook looked clean...
+    validations:
+      required: true
+
+  - type: textarea
+    id: friction
+    attributes:
+      label: What felt rough or got in the way?
+      placeholder: A command was hard to discover, output was noisy, hooks behaved unexpectedly...
+    validations:
+      required: true
+
+  - type: textarea
+    id: continue
+    attributes:
+      label: Would you keep using it today?
+      description: Explain why or why not.
+      placeholder: Yes, if... / Not yet, because...
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS + shell + install method
+      placeholder: Windows 11 + PowerShell 7 + release binary + setup

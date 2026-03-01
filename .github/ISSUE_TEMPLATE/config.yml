@@ -1,0 +1,8 @@
+﻿blank_issues_enabled: false
+contact_links:
+  - name: Security disclosure
+    url: https://github.com/fixi2/Commandry/blob/main/.github/SECURITY.md
+    about: Do not open public security issues. Use the disclosure path in SECURITY.md.
+  - name: Testing guide
+    url: https://github.com/fixi2/Commandry/blob/main/TESTING.md
+    about: Check the local and CI test packs before filing reproducibility issues.
