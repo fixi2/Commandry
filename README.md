@@ -7,16 +7,12 @@
 <p align="center">Local-first CLI for recording shell sessions and exporting deterministic Markdown runbooks.</p>
 
 <p align="center">
-  <a href="https://github.com/fixi2/Commandry/releases"><img src="https://img.shields.io/badge/status-beta-ff5a36?style=for-the-badge" alt="Beta"></a>
-  <a href="https://go.dev/"><img src="https://img.shields.io/badge/go-1.22%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go 1.22+"></a>
-  <img src="https://img.shields.io/badge/local--first-0ea5a8?style=for-the-badge" alt="Local-first">
-  <img src="https://img.shields.io/badge/telemetry-none-1f8f5f?style=for-the-badge" alt="No telemetry">
+  <a href="https://github.com/fixi2/Commandry/releases"><img src="https://img.shields.io/badge/beta-ff5a36?style=for-the-badge" alt="Beta"></a>
 </p>
 
 <p align="center">
   <a href="https://github.com/fixi2/Commandry/releases"><img src="https://img.shields.io/badge/download-latest%20release-111827?style=for-the-badge&logo=github" alt="Download latest release"></a>
-  <a href="https://github.com/fixi2/Commandry/issues/new?template=beta_feedback.yml"><img src="https://img.shields.io/badge/beta-feedback-111827?style=for-the-badge&logo=github" alt="Beta feedback"></a>
-  <a href="TESTING.md"><img src="https://img.shields.io/badge/tests-testing%20guide-111827?style=for-the-badge" alt="Testing guide"></a>
+  <a href="https://github.com/fixi2/Commandry/issues/new?template=beta_feedback.yml"><img src="https://img.shields.io/badge/share-beta%20feedback-111827?style=for-the-badge&logo=github" alt="Share beta feedback"></a>
 </p>
 
 > Commandry is currently in beta. The project was renamed from InfraTrack in `v0.6.0`; a few migration-safe technical references still keep the legacy name while the remaining contracts finish moving.
